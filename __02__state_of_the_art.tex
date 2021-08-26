@@ -1,0 +1,45 @@
+\section{State of the art}
+\label{sec:sota}
+% Wstęp.Zawiera opis   dziedziny   pracy niezbędny  dla  precyzyjnego  postawienia problemów i metod ich rozwiązania.Zawiera również opis  stanu  wiedzy w  zakresie proponowanych  rozwiązań  oparty  o  najnowszą  literaturę  monograficzną  (książki), źródłową  (czasopisma  naukowe), publikacje   konferencyjne, preprinty   oraz inne dokumenty elektroniczne  zweryfikowanych autorów.Ostatnim  elementem  wstępu jest spis  problemów  otwartych w  zakresie  których realizowane  będą  badania,  oraz teza pracy, która  krótko  charakteryzuje  wynik naukowy jaki ma zostać osiągnięty.
+
+\textit{The QUIC Fix for Optimal Video Streaming} article \cite{the-quic-fix-for-optimal-video-streaming} introduces unreliable data transmission over QUIC and presents how combination of reliable and unreliable transmission fares in video streaming and outperforms TCP and reliable mode of QUIC.
+Authors of this document tag H.264 video frames depending on their importance.
+\textit{I-Frames} which are independent frames meaning they can be displayed without any additional frames are marked to be sent reliably.
+\textit{P-Frames} which are much smaller in size and code only the difference between \textit{I-Frame} and the next frame are marked to be sent unreliably.
+The same approach is applied to \textit{B-Frames} that depends on both \textit{I-Frames} and \textit{P-frames}.
+Authors state that the loss of \textit{P-Frames} or \textit{B-Frames} has minimal or no impact on the user's quality of experience (QoE).
+They use i.a. \textit{buffering ratio (bufRatio)} and \textit{rate of buffering (rateBuf)} metrics to measure the difference in performance of streaming video over codec-agnostic DASH protocol used with TCP, traditional QUIC and QUIC with addition of unreliable transmission.
+\textit{BufRatio} is the amount of time spent on buffering video comparing to the total session time (i.e. playing plus buffering time), represented as a percentage.
+\textit{RateBuf} is the frequency of the buffering events \cite{impact-of-video-quality-on-user-engagement}.
+As a result, \textit{bufRatio}, with packet loss set to 0.64\%, for TCP is 105\%, for QUIC is 30\% and for QUIC with addition of unreliable data transmission is less than 1\%.
+\textit{RateBuf}, with the same packet loss, is eqaul to 50\% for TCP, 19\% for QUIC and nearly 0\% for QUIC with addition of unreliable data transmission.
+
+\textit{QUIC: Better for what and for whom?} article \cite{quic-better-for-what-and-for-whom} compares the page load time (PLT) for HTTP/2 requests over QUIC and TCP/TLS in different network conditions and architectures as well as for different website complexities.
+Authors prepared both local and remote testbeds.
+In the remote one client's machine is connected to the Internet over ADSL (to router over Ethernet or Wi-Fi) or 4G.
+Different network conditions mean different packet loss rate and delay.
+In case of complexity of site there is Youtube service in which different resources might be distributed over many servers and Doctor (website of the ANR project) website where ale files are located on the same server.
+Authors concludes that QUIC outperforms HTTP/2 over TCP/TLS in unstable networks but in case of stable and reliable networks the benefits of QUIC are not so obvious.
+
+\textit{Game of protocols: Is QUIC ready for prime time streaming?} article \cite{game-of-protocols} compares QUIC and TCP in HAS (HTTP adaptive streaming) applications.
+To this end, authors performed experiments in four scenarios.
+Frame-seek scenario is about seeking to the specified frame in the video.
+Connection-switch scenario is about changing the connection from e.g. Wi-Fi to 3G.
+Multiplexing scenario is about comparing different stream multiplexing techniques i.e. HTTP/1.1 over varying number of TCP connections, HTTP/2 with parallel requests over a single TCP connection and QUIC over a single UDP connection.
+Fairness scenario is about checking fairness of congestion control mechanisms while there are multiple competing clients.
+Authors also used three different adaptive algorithms: BASIC, SARA and BBA-2.
+In the frame-seek scenario for BASIC algorithm QUIC behaved better by reducing bufRatio (called by authors rebuffer rate) from 3\% for WiFi and LTE to 1\% for WiFi and 2\% for LTE. 
+For 3G networks, QUIC reduced bufRatio from 5\% to 2\%.
+For SARA and BBA-2 algorithms the results are also in favor of QUIC.
+In the WiFi-LTE connection-switch scenario, QUIC reduced numerically bufRatio by 1\%, from 5\% to 4\% for BBA-2, from 4\% to 3\% for SARA and from 3\% to 2\% for BASIC. 
+Average playback bitrates also were a little higher for QUIC.
+In the WiFi-3G connection-switch scenario, QUIC also behaved better and the reduction of bufRatio was similar except for BASIC algorithm where QUIC reduced bufRatio from 13\% to 6\%.
+Evaluation of different multiplexing techniques showed that in the typical network conditions all three methods resulted in the similar average playback bitrate.
+In the large delay and typical loss network, QUIC performed best.
+For typical delay and large loss as well as for large delay and large loss, HTTP/1.1 with varying number of TCP connections was better than QUIC.
+HTTP/2 over single TCP connection didn't manage to beat any of the other multiplexing techniques in any of the network conditions.
+Fairness examination of congestion control mechanisms in TCP and QUIC showed that for typical packet loss and delay both protocols guarantee fair resource access for competing clients which results in the similar average playback bitrate.
+In the large loss scenario single QUIC client was able to achieve higher bitrate (about 37\%) than single TCP client.
+For competing clients, QUIC still was able to achieve better bitrate than TCP (about 40\%).
+In the large delay scenario, the results were similar to the large loss scenario.
+The last one scenario with large loss and large delay showed that TCP client was able to achieve higher bitrate (about 16\%) both when competing and not competing with QUIC client.

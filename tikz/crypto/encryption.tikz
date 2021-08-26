@@ -1,0 +1,11 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        ylabel=Time (ns),
+        bar width=1cm,
+        enlarge x limits=1,
+        ybar,
+        xtick=data,
+        xticklabels from table={results/crypto/encryption.dat}{version}]
+        \addplot table[mark=*, x expr=\coordindex, y index=1] {results/crypto/encryption.dat};
+    \end{axis}
+\end{tikzpicture}

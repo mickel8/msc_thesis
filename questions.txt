@@ -1,0 +1,61 @@
+komunikacja interaktywna
+sterowanie robotem
+media z interakcja
+vod - nie
+
+wysyłanie i odbieranie danych - tak zeby nie tkwiły zbyt długo w buforach
+1200 bajtów - nie problem, ping problem ale nie nasz przypadek
+routery i optymalizacje dla protokołów
+
+network emulator i ecn
+
+połączeniowość jest 
+
+obserwacja pewnych obszarow w ktorych mogloby byc lepiej/obserwacja pewnych niedomagań
+komunikacja interaktywna nie zawsze jest realizowana optymalnie
+widzimy szanse na usprawnienie
+
+obserwacje - podać dane - zacinanie się SSH - czy w QUICu będzie lepiej
+
+tactile internet
+stwierdzenia znanych osób - od kilku lat obserwuje się...
+
+
+zdalne operacje - ekonomiczne aspekty
+
+
+określenie braków - motywacja
+
+
+wprowadzanie opóźnienia
+
+kontrola przeciążeń działa tym gorzej im wieksze opóźnienie
+
+
+rownowazenie obciazenia nalezy pozostawic urzadzeniom sieciowym
+
+obsluga pakietow QUIC przez routery - czy nie sa gorzej niz TCP i UDP/RTP
+
+
+## Flow control i niezawodność
+0. Co się dzieje jeśli próbujemy wysłać więcej danych niż pozwala nam na to flow control?
+1. Czy ACK wysyłane są per stream czy mogą potwierdzać pakiety z różnych streamów?
+Wysyłane są per połączenie i potwierdzają odbiór pakietu/pakietów. Pakiety mogą zawierać
+ramki z różnych streamów.
+2. Czy ACK może potwierdzać więcej niż jeden pakiet i czy może być wysłane dopiero po 
+odebraniu kilku pakietów?
+Tak. Przykładem są pakiety z ACK. Potrzeba jeszcze zasymulować przykład ze zwykłymi
+pakietami ale według RFC nawet powinno wysyłać ACK dopiero po otrzymaniu dwóch ack-elicting
+pakietów.
+3. Czy numery pakietów są inkrementowane czy mogą być zwiększane o więcej niż jeden?
+Muszą być zwiększane o co najmniej jeden. RFC sekcja 12.3. 
+4. Czy to może mieć wpływ na ramki ACK? Skąd wiadomo, że dany pakiet nie istnieje, a nie 
+nie, że został zgubiony?
+5. Jak jest zwiększane okno flow control? 
+Ramki MSD i MD powiększone o ilość danych, która została odebrana/potwierdzona.
+6. Jak często są wysyłane MSD i MD?
+
+## Address validation
+0. Implicitly during connection establishment ???
+1. Wybranie DCID zaoferowanego przez peer'a. 
+3. Wysłanie Retry pakietu z tokenem, który jest przesyłany w kolejnych pakietach
