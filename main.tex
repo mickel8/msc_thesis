@@ -1,4 +1,4 @@
-\documentclass[pdflatex,12pt]{article}
+\documentclass[12pt]{article}
 \usepackage[utf8]{inputenc}
 
 \usepackage{enumerate}
@@ -13,10 +13,14 @@
 \usepackage{subcaption}
 \usepackage{pgf-umlsd}
 \usepackage{epstopdf}
+\usepackage{bytefield}
+\usepackage{amsmath}
 \usepackage[nottoc,numbib]{tocbibind}
 
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{decorations.text}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit,shapes}
 
 \lstloadlanguages{TeX}
 
@@ -29,14 +33,15 @@
 \listoftables
 \clearpage
 
+\definecolor{lightred}{rgb}{1,0.7,0.71}
+
 \include{__01__motivation}
 \include{__02__state_of_the_art}
 \include{__03__problem}
 \include{__04__QUIC_against_other_transport_protocols}
-\include{__06__current_standards_and_protocols}
+\include{__06__quic_in_webrtc}
 \include{__09__datagrams}
 \include{__07__congestion_control}
-\include{__10__packet_enc}
 \include{__11__conclusions}
 
 \bibliographystyle{plain}

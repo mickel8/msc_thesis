@@ -6,6 +6,83 @@ Together with QUIC there comes a new version of HTTP called HTTP/3.
 
 This section outlines main features of QUIC and compares QUIC to the other transport protocols.
 
+\subsection{Packet types in QUIC}
+\label{subsec:quic-packet-types}
+The most outer entity in QUIC is a packet.
+Each QUIC packet consists of a header that can take long or short form and one or more QUIC frames.
+QUIC packets are directly encapsulated into UDP datagrams.
+This is illustrated in figure~\ref{fig:quic-packet-format}.
+A single UDP datagram can also coalesce many QUIC packets, however, this feature is not important in terms of regular data exchange.
+
+\begin{figure}
+    \centering
+    \begin{bytefield}{32}
+        \begin{leftwordgroup}{\tiny UDP header}
+            \bitbox{16}{\tiny source port} & \bitbox{16}{\tiny destination port} \\
+            \bitbox{16}{\tiny length} & \bitbox{16}{\tiny checksum}
+        \end{leftwordgroup} \\
+        \begin{leftwordgroup}{\tiny UDP data}
+            \begin{rightwordgroup}{\tiny QUIC packet}
+                \wordbox{1}{\tiny quic header} \\
+                \wordbox[tlr]{1}{\tiny  quic frames} \\
+                \wordbox[blr]{1}{\tiny $\cdots$}
+            \end{rightwordgroup}
+        \end{leftwordgroup}
+    \end{bytefield}
+    \caption{QUIC packet format}
+    \label{fig:quic-packet-format}
+\end{figure}
+
+QUIC defines two types of header: short and long.
+Figure~\ref{fig:short_header} illustrates Short Header form.
+The first byte encodes miscellaneous flags.
+Next, there is a destination connection ID that takes at most 20 bytes and a packet number that takes from 1 to 4 bytes.
+Total size of Short Header is from 2 to 25 bytes.
+Fields marked with red color are subject to an encryption process.
+On the other hand Long Header additionally includes version, destination connection ID length, source connection ID length and source connection ID\@.
+Flags differ a little comparing to the Short Header but together with a packet number length they also take 1 byte.
+
+\begin{figure}[h]
+    \centering
+    \begin{bytefield}[bitwidth=4em]{8}
+        \bitheader{0-7} \\
+        \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{1}{\tiny spin bit} & \bitbox{2}[bgcolor=lightred]{\tiny reserved bits} & \bitbox{1}[bgcolor=lightred]{\tiny key phase} & \bitbox{2}[bgcolor=lightred]{\tiny packet number length} \\
+        \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
+        \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
+    \end{bytefield}
+    \caption{Short Header}
+    \label{fig:short_header}
+\end{figure}
+
+QUIC introduces also different types of packets and frames.
+Depending on specific packet type, it can contain different frame types.
+For example \textit{Handshake} packet can contain \textit{CRYPTO}, \textit{PING}, \textit{PADDING}, \textit{ACK} or \textit{CONNECTION\_CLOSE} frames.
+We can divide packet types basing on header form they use.
+Following packet types use Long Header: \textit{Version Negotiation}, \textit{Initial}, \textit{0-RTT}, \textit{Handshake}, \textit{Retry}.
+They are sent at the beginning of communication and therefore they are not covered more here.
+
+Packet that uses Short Header is called \textit{1-RTT}.
+1-RTT packets are sent after version and 1-RTT keys negotiation.
+In an interactive communication they are main packets and they will, for example, convey media data.
+1-RTT packet format is illustrated in figure~\ref{fig:1rtt-packet-format}.
+
+\begin{figure}[h]
+    \centering
+    \begin{bytefield}[bitwidth=3.5em]{8}
+        \bitheader{0-7} \\
+        \begin{leftwordgroup}{\tiny short \\ \tiny header}
+            \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{1}{\tiny spin bit} & \bitbox{2}[bgcolor=lightred]{\tiny reserved bits} & \bitbox{1}[bgcolor=lightred]{\tiny key phase} & \bitbox{2}[bgcolor=lightred]{\tiny packet number length} \\
+            \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
+            \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
+        \end{leftwordgroup} \\
+        \wordbox[tlr]{1}[bgcolor=lightred]{\tiny payload} \\
+        \wordbox[blr]{1}[bgcolor=lightred]{\tiny $\cdots$}
+    \end{bytefield}
+    \caption{1-RTT packet format}
+    \label{fig:1rtt-packet-format}
+\end{figure}
+
+
 \subsection{Security}
 QUIC is integrated with TLS 1.3 providing confidentiality, integrity and authenticity of its packets.
 Integration with TLS 1.3 is described in details in RFC 9001 \cite{rfc9001} and is based on negotiating both transport and cryptographic parameters in a single connection handshake.
