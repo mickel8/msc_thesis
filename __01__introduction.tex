@@ -1,0 +1,45 @@
+\section{Introduction}
+\label{sec:introduction}
+
+An interactive communication is bidirectional data exchange between people or people and machines.
+The main feature of interactive communication is that the operations performed by a person or machine on the one side determine the operations performed on the other side.
+Examples of interactive communication are controlling remote robots in tele-surgery, doing exercises in tele-rehabilitation or some types of multimedia sessions e.g.\ video conferences.
+
+Years of testing and improvements have made interactive communication really fast.
+We can talk with another person almost in the real time with a delay of several milliseconds.
+Having said that it is perfectly correct to ask a question whether communication can be even faster, more effective and reliable and whether it is still worth to make improvements while we already have well prospering ecosystem.
+In 2006 Prof.\ Edward Delp said:
+\begin{displayquote}
+    Is video coding dead?
+    Some feel that, with the higher coding efficiency of the H.264/MPEG-4 Advanced Video Coding (AVC) standard (2x as compared to MPEG-2), perhaps there is not much more to do.
+    I must admit that I have heard this \textquote{compression is dead} argument at least four times since I started working in image and video coding in 1976.\cite{4015574}
+\end{displayquote}
+Despite the fact that we are able to achieve very good performance in video conferencing systems there is still much to do.
+Serious gaming, tele-surgery and tele-rehabilitation are all subject to tactile internet in which reliability, security and low latency are fundamental.
+In such cases delay of 1 ms is desirable~\cite{the-tactile-internet}.
+On the other hand, complexity of current standards like WebRTC makes them hard to implement, monitor and maintain.
+
+
+QUIC is a new transport protocol standardized in RFC 9000 on May in 2021.
+Its integration with TLS 1.3 significantly reduces connection establishment time while stream multiplexing in a single connection resolves head of line blocking problem.
+QUIC introduces also special connection identifiers that prevents from additional handshakes in case of network switching and defines own flow control and congestion control mechanisms that are based on TCP ones.
+QUIC packets are encapsulated in UDP datagrams which makes QUIC user level protocol i.e.\ there is no need to modify kernel implementation to provide operating system with support for QUIC\@.
+QUIC is mostly deployed in conjunction with a new version of HTTP called HTTP/3 and is intended to replace TCP and HTTP/2.
+Therefore most publications compare QUIC and HTTP/3 with TCP/TLS and HTTP/2.
+However, it turns out that a lot of QUIC features can be useful in other domains.
+One of them is definitely adaptive streaming.
+As a result a number of IETF drafts emerged to expand QUIC to new areas.
+
+This document brings QUIC to one more domain called interactive communication and tries to answer a question whether QUIC can introduce significant improvement in terms of interactive communication.
+To this end, theoretical analysis of QUIC congestion control, loss detection and encryption mechanisms as well as number of tests and experiments have been performed.
+In addition, two IETF drafts that are important in terms of interactive communication are discussed -- \textit{An Unreliable Datagram Extension to QUIC} and \textit{QUIC-based UDP Transport for Secure Shell (SSH)}.
+The former allows for sending unreliable messages over QUIC while the latter describes integration of QUIC with SSH protocol.
+
+The structure of this document is as follows.
+Section~\ref{sec:state-of-the-art} presents state of the art and defines problems that will be addressed in this document.
+Section~\ref{sec:quic-overview} introduces basic concepts of QUIC and compares QUIC to other transport protocols.
+Section~\ref{sec:quic-in-webrtc} presents how QUIC can simplify WebRTC protocol stack.
+It also describes packet encryption process in QUIC, answers the question if header encryption introduces significant overhead to the whole packet encryption and compares QUIC encryption process with RTP one.
+Section~\ref{sec:datagrams} is dedicated to DATAGRAM frames in QUIC -- how they work and behave in different scenarios.
+Section~\ref{sec:congestion_control} outlines the congestion control mechanism in QUIC and compares it to the congestion control mechanism in TCP\@.
+Section~\ref{sec:conclusions} concludes this document.
