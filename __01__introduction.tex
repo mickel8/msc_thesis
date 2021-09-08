@@ -21,7 +21,7 @@ On the other hand, complexity of current standards like WebRTC makes them hard t
 
 
 QUIC is a new transport protocol standardized in RFC 9000 on May in 2021.
-Its integration with TLS 1.3 significantly reduces connection establishment time while stream multiplexing in a single connection resolves head of line blocking problem.
+Its integration with TLS 1.3 significantly reduces connection establishment time while stream multiplexing in a single connection resolves head of line blocking problem of HTTP/2.
 QUIC introduces also special connection identifiers that prevents from additional handshakes in case of network switching and defines own flow control and congestion control mechanisms that are based on TCP ones.
 QUIC packets are encapsulated in UDP datagrams which makes QUIC user level protocol i.e.\ there is no need to modify kernel implementation to provide operating system with support for QUIC\@.
 QUIC is mostly deployed in conjunction with a new version of HTTP called HTTP/3 and is intended to replace TCP and HTTP/2.
