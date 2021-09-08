@@ -17,6 +17,7 @@
 \usepackage{amsmath}
 \usepackage{csquotes}
 \usepackage[nottoc,numbib]{tocbibind}
+\usepackage[section]{placeins}
 
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{decorations.text}
@@ -37,12 +38,19 @@
     \definecolor{lightred}{rgb}{1,0.7,0.71}
 
     \include{__01__introduction}
+    \clearpage
     \include{__02__state-of-the-art}
+    \clearpage
     \include{__04__quic-overview}
+    \clearpage
     \include{__06__quic-in-webrtc}
+    \clearpage
     \include{__09__datagrams}
+    \clearpage
     \include{__07__congestion_control}
+    \clearpage
     \include{__11__conclusions}
+    \clearpage
 
     \bibliographystyle{plain}
     \bibliography{bibliografia}

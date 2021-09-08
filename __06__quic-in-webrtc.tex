@@ -223,7 +223,7 @@ Figure~\ref{fig:payload_enc} shows the process of payload encryption.
 As a plain text we pass payload and as an associated data we pass plain header.
 As a result we get a ciphertext and an authentication tag.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{tikzpicture}
         \node (aead) [rectangle, draw=black, minimum width=2cm,minimum height=2cm] {AEAD};
@@ -250,7 +250,7 @@ As a result we get header with some fields being encrypted.
 Algorithm used to encrypt sample depends on negotiated cipher-suite.
 For example, if payload is encrypted with AES\_128\_GCM then sample will be encrypted using AES\_128\_ECB.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \tikzset{XOR/.style={draw,circle, minimum width=1cm, minimum height=1cm, append after command={
     [shorten >=\pgflinewidth, shorten <=\pgflinewidth,]
@@ -322,7 +322,7 @@ For 400, 800 and 1200 RTP payload sizes we can observe shorter encryption time t
 This is probably because of concurrent execution of encryption process.
 The data can be split across threads in a manner that allocates additional thread for 400, 800 and 1200 bytes.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{tikzpicture}
         \begin{axis}[xlabel={RTP payload size (bytes)},
@@ -343,7 +343,7 @@ As in the first test scenario, for 400, 800 and 1200 RTP payload sizes we can ob
 Encryption of QUIC packet that encapsulates RTP packet is slower by 30--50ns comparing to standalone RTP payload encryption.
 This is illustrated in figure~\ref{fig:rtp-payload-quic-packet-enc}.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{tikzpicture}
         \begin{axis}[xlabel={RTP payload size (bytes)},
