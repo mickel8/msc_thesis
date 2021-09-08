@@ -18,6 +18,7 @@
 \usepackage{csquotes}
 \usepackage[nottoc,numbib]{tocbibind}
 \usepackage[section]{placeins}
+\usepackage{tgtermes}
 
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{decorations.text}
@@ -26,7 +27,12 @@
 
 \lstloadlanguages{TeX}
 
+\definecolor{lightred}{rgb}{1,0.7,0.71}
+
 \begin{document}
+
+    \include{__00__title-page}
+    \clearpage
 
     \tableofcontents
     \clearpage
@@ -34,8 +40,6 @@
     \clearpage
     \listoftables
     \clearpage
-
-    \definecolor{lightred}{rgb}{1,0.7,0.71}
 
     \include{__01__introduction}
     \clearpage
