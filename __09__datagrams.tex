@@ -17,7 +17,7 @@ They are presented in the following sections.
 Figure \ref{fig:dgram_test_env} shows test environment used in DATAGRAMs experiments.
 Both machines are in local network.
  
-\begin{figure}[h]
+\begin{figure}
   \centering
   \includegraphics[width=0.8\textwidth]{img/__09__datagrams/dgram_test_env.pdf}
   \caption{Test environment}
@@ -33,7 +33,7 @@ Client opens two bidirectional streams while server sets their flow control limi
 In each iteration client tries to send 10 reliable and 10 unreliable messages of size 800B each.
 Figure \ref{fig:dgram_flow_control} presents this scenario.
 
-\begin{figure}[h]
+\begin{figure}
   \centering
   \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control.png}
   \caption{DATAGRAM flow control test}
@@ -52,7 +52,7 @@ However, he is still able to send packets with DATAGRAM frames (packets 4, 5, 6)
 % \end{figure}
 
 Figure \ref{fig:dgram_flow_control2} shows this behavior from different perspective.
-\begin{figure}[h]
+\begin{figure}
   \centering
   \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control_2.png}
   \caption{DATAGRAM flow control test}
@@ -89,8 +89,9 @@ Server responsibility was to respond for each message by returning it back to th
 After sending each message client was waiting for the response from the sever specified amount of time.
 The summary is presented in table \ref{tab:dgram_packet_loss}.
 
-\begin{table}[h]
+\begin{table}
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{|c | c | c | c | c | c |} 
     \hline
     \multicolumn{2}{|c}{\makecell{0\% packet loss}} & \multicolumn{2}{|c}{\makecell{10\% packet loss}}  & \multicolumn{2}{|c|}{\makecell{30\% packet loss}} \\
@@ -101,7 +102,8 @@ The summary is presented in table \ref{tab:dgram_packet_loss}.
     \hline
     1005 & 0 & 1007 & 89 & 1031 & 318 \\ 
     \hline
-\end{tabular}
+\end{tabular}%
+}
 \caption{\label{tab:dgram_packet_loss}Number of packets sent with and without packet loss for DATAGRAM frames.}
 \end{table}
 
@@ -119,7 +121,7 @@ This time we can observe that client sent ~20-30 packets more than in the first 
 It's because of PING frames that are being sent when PTO timer expires. 
 Figure \ref{fig:dgram_ping_frames} illustrates this situation.
  
-\begin{figure}[h]
+\begin{figure}
   \centering
   \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_retransmission_ping.png}
   \caption{Sending PING frame after server or client inactivity. 

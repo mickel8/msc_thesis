@@ -46,7 +46,7 @@ Fields marked with red color are subject to an encryption process.
 On the other hand Long Header additionally includes version, destination connection ID length, source connection ID length and source connection ID\@.
 Flags differ a little comparing to the Short Header but together with a packet number length they also take 1 byte.
 
-\begin{figure}[h]
+\begin{figure}
     \centering
     \begin{bytefield}[bitwidth=4em]{8}
         \bitheader{0-7} \\
@@ -70,7 +70,7 @@ Packet that uses Short Header is called \textit{1-RTT}.
 In an interactive communication they are main packets and they will, for example, convey media data.
 1-RTT packet format is illustrated in figure~\ref{fig:1rtt-packet-format}.
 
-\begin{figure}[h]
+\begin{figure}
     \centering
     \begin{bytefield}[bitwidth=3.5em]{8}
         \bitheader{0-7} \\
@@ -182,7 +182,7 @@ This is the source of so called head of line blocking problem which appears when
 Losing one packet stops the entire flow.
 However, thanks to the stream multiplexing QUIC resolves this problem and streams 2 and 3 are not affected by the packet loss in stream 1.
 
-\begin{figure}[h]
+\begin{figure}
     \centering
     \begin{tikzpicture}
 
@@ -272,7 +272,7 @@ Its main domain is telecommunication as a lot of home routers does not handle SC
 
 \subsubsection{Summary}
 Table~\ref{tab:protocols_comparision} presents a short summary of transport protocols comparison.
-\begin{table}[h]
+\begin{table}
     \centering
     \resizebox{\columnwidth}{!}{%
     \begin{tabular}{|c | c | c | c | c |}
