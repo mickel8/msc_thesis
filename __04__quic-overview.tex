@@ -38,7 +38,7 @@ A single UDP datagram can also coalesce many QUIC packets, however, this feature
 \end{figure}
 
 QUIC defines two types of header: short and long.
-Figure~\ref{fig:short_header} illustrates Short Header form.
+Figure~\ref{fig:short-header-format} illustrates Short Header format.
 The first byte encodes miscellaneous flags.
 Next, there is a destination connection ID that takes at most 20 bytes and a packet number that takes from 1 to 4 bytes.
 Total size of Short Header is from 2 to 25 bytes.
@@ -54,8 +54,8 @@ Flags differ a little comparing to the Short Header but together with a packet n
         \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
         \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
     \end{bytefield}
-    \caption{Short Header}
-    \label{fig:short_header}
+    \caption{Short Header format}
+    \label{fig:short-header-format}
 \end{figure}
 
 QUIC introduces also different types of packets and frames.
@@ -86,18 +86,12 @@ In an interactive communication they are main packets and they will, for example
     \label{fig:1rtt-packet-format}
 \end{figure}
 
-\subsection{Security}
-\label{subsec:security}
+\subsection{Security and low-latency connection establishment}
+\label{subsec:security-and-low-latency-connection-establishment}
 QUIC is integrated with TLS 1.3 providing confidentiality, integrity and authenticity of its packets.
-Integration with TLS 1.3 is described in details in RFC 9001~\cite{rfc9001} and is based on negotiating both transport and cryptographic parameters in a single connection handshake.
-This results in low-latency connection establishment (see section~\ref{subsec:low-latency-conn-est}).
-On the other hand there is no possibility to send unencrypted data over QUIC\@.
-
-\subsection{Low-latency connection establishment}
-\label{subsec:low-latency-conn-est}
-Integration with TLS 1.3 results in reduction of handshakes needed for establishing a connection.
-Unlike TCP, QUIC can perform both transport and cryptographic handshakes simultaneously by sending in its Initial packet data required by TLS\@.
-This is presented in figure~\ref{fig:low-latency-conn-est}.
+Integration with TLS 1.3 is described in details in RFC 9001~\cite{rfc9001}.
+It is based on negotiating both transport and cryptographic parameters in a single connection handshake which results in a low-latency connection establishment.
+Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP request using TCP/TLS and QUIC.
 
 \begin{figure}
     \centering
@@ -137,19 +131,17 @@ This is presented in figure~\ref{fig:low-latency-conn-est}.
     \label{fig:low-latency-conn-est}
 \end{figure}
 
-Standard HTTP request using TCP/TLS stack requires 3-RTT (Round Trip Time).
-Round Trip Time is a time needed for transporting a message from one side to the other and back again.
-In TCP/TLS scenario, we need to perform separate handshakes for TCP and TLS which results in 2-RTT\@.
-After this time we are able to send HTTP request which takes additional 1-RTT\@.
-This scenario is presented in figure~\ref{subfig:http-req-tcp}.
+Round Trip Time (RTT) is a time needed for transporting a message from one side to the other and back again.
+Standard HTTP request using TCP/TLS stack requires 3-RTT -- one for TCP handshake, one for TLS handshake and one for HTTP request.
+Even though TCP handshake sends 3 messages it is still counted as 1-RTT because we do not have to wait for a response to the last message but we can immediately send next data, which in this case is data for TLS handshake.
 
 QUIC takes another approach.
 It combines transport and cryptographic handshakes reducing time needed for establishing a connection.
-In such a case sending HTTP request and receiving a response takes 2-RTT\@.
-This scenario is presented in figure~\ref{subfig:http-req-quic}.
+In such a case sending an HTTP request occurs after 1-RTT\@.
+The whole communication lasts 2-RTT\@.
 
-However, QUIC can reduce time needed for sending HTTP request and receiving a response even more.
-In case when there was communication with the server previously and client cached information from it, it is possible to send HTTP request in the first round-trip of the connection.
+However, QUIC can reduce time needed for sending an HTTP request and receiving a response even more.
+In case when there was communication with the server previously and client cached information from it, it is possible to send 0-RTT HTTP request.
 This scenario is presented in figure~\ref{fig:http-req-quic-0rtt}
 \begin{figure}
     \centering
@@ -167,6 +159,8 @@ This scenario is presented in figure~\ref{fig:http-req-quic-0rtt}
     \caption{HTTP request in QUIC with 0-RTT packets}
     \label{fig:http-req-quic-0rtt}
 \end{figure}
+
+The only limitation of integrating TLS with QUIC is that there is no possibility to send unencrypted data.
 
 \subsection{Stream multiplexing}
 \label{subsec:stream-multiplexing}
@@ -228,13 +222,29 @@ This way, as long as there is an alternative network path, QUIC is resilient to 
 
 \subsection{Flow control and congestion control mechanisms}
 \label{subsec:flow-control-and-congestion-control}
+Flow control limits amount of data that can be sent to the receiver.
+Receiver can announce how much data it is able to process/buffer and sender must not exceed this limit until it is updated.
+In QUIC, flow control limits can be set on two levels.
+The first one is stream level.
+This limit is set per stream type e.g.\ for all unidirectional streams opened by the peer or for all bidirectional streams opened locally.
+There is no possibility to set flow control limit for a stream with a particular id.
+The second one is connection level and it limits overall data amount that can be sent within the whole connection across all streams.
+QUIC allows also for limiting number of streams that can be opened by the peer.
+These limits are also set per stream type -- unidirectional or bidirectional and initiated by a peer or locally.
+
+On the other hand congestion control limits amount of data that can be sent through the network.
+Whenever there is a danger that some middle-boxes like routers can be overwhelmed by the amount of data they have to process, they require sender to slow down its transmission rate.
+This is often done using ECN (Explicit Congestion Notification) flag in an IP packet.
+RFC 9001~\cite{rfc9001} defines congestion controller similar to TCP NewReno.
+However, any other congestion controller that meets requirements defined in section 3.1 of RFC 8085~\cite{rfc8085} can be used.
+This makes QUIC congestion control mechanism pluggable.
 
 \subsection{Reliability}
 \label{subsec:reliability}
 QUIC is a reliable protocol which means it guarantees delivery of each packet sent by the endpoint.
 Packets are delivered to the receiver side in the order they were sent.
 However, there are different IETF drafts that expand QUIC with new features.
-One of them called "An Unreliable Datagram Extension to QUIC"\cite{bider-ssh-quic-09} allows for sending unreliable messages over QUIC\@.
+One of them called \textit{An Unreliable Datagram Extension to QUIC}\cite{bider-ssh-quic-09} allows for sending unreliable messages over QUIC\@.
 This can take place in simultaneously to the reliable communication.
 Unreliable messages are not subject to flow control mechanisms however, they are congestion controlled.
 Each unreliable message is also acknowledged so that application layer can be provided with the packet loss information.
@@ -247,10 +257,10 @@ This section compares QUIC with three main transport protocols -- TCP, UDP and S
 \subsubsection{TCP}
 Transmission Control Protocol -- connection based, stream oriented and reliable transport protocol.
 It guarantees the order of messages and provides flow control and congestion control mechanisms.
-One of the drawbacks of TCP is its head of line blocking problem.
-If one TCP segment gets lost then all subsequent TCP segments that arrived to the recipient have to be buffered until retransmission of the lost segment.
-When the lost segment finally arrives, buffered segments and retransmitted segment are arranged in the proper order and made available to the user who can read them from internal socket buffer.
-This is the reason why HTTP/2 only partially solves head of line blocking problem of HTTP/1 -- there is still the same problem on TCP level.
+TCP is not a multiplexed protocol.
+In one TCP connection we have one logical communication channel.
+This is the reason of head of line blocking problem that appears when many HTTP/2 requests are multiplexed in one TCP connection.
+Because of its reliability, TCP is not a good choice for many types of interactive communication.
 
 \subsubsection{UDP}
 User Datagram Protocol -- connection less, unreliable transport protocol.
@@ -263,12 +273,12 @@ However, multicast is rarely used, mostly in local networks.
 
 \subsubsection{SCTP}
 Stream Control Transmission Protocol -- reliable, based on UDP, message oriented transport protocol.
-Unlike TCP, SCTP is multi-stream protocol which means that it is not affected by head of line blocking problem.
+Unlike TCP, SCTP is multistream protocol.
 SCTP is partially ordered but it also allows for sending unordered messages.
 Another feature of SCTP is multi-homing in which an endpoint uses two different addresses.
 This introduces some kind of fault tolerance -- one address is designated as a primary and the other one can be used in case of failure of the first one.
 Unfortunately SCTP is not widely used.
-Its main domain is telecommunication as a lot of home routers does not handle SCTP properly.
+Its main domain is telecommunication as a lot of home routers does not handle it properly.
 
 \subsubsection{Summary}
 Table~\ref{tab:protocols_comparision} presents a short summary of transport protocols comparison.

@@ -177,3 +177,18 @@
     day = 12,
     abstract = {This document specifies a minimal mapping for encapsulating RTP and RTCP packets within QUIC. It also discusses how to leverage state from the QUIC implementation in the endpoints to reduce the exchange of RTCP packets. Discussion Venues This note is to be removed before publishing as an RFC. Discussion of this document takes place on the mailing list (), which is archived at . Source for this draft and an issue tracker can be found at https://github.com/mengelbart/rtp-over-quic-draft.},
 }
+
+@misc{rfc8085,
+    series = {Request for Comments},
+    number = 8085,
+    howpublished = {RFC 8085},
+    publisher = {RFC Editor},
+    doi = {10.17487/RFC8085},
+    url = {https://rfc-editor.org/rfc/rfc8085.txt},
+    author = {Lars Eggert and Gorry Fairhurst and Greg Shepherd},
+    title = {{UDP Usage Guidelines}},
+    pagetotal = 55,
+    year = 2017,
+    month = mar,
+    abstract = {The User Datagram Protocol (UDP) provides a minimal message-passing transport that has no inherent congestion control mechanisms. This document provides guidelines on the use of UDP for the designers of applications, tunnels, and other protocols that use UDP. Congestion control guidelines are a primary focus, but the document also provides guidance on other topics, including message sizes, reliability, checksums, middlebox traversal, the use of Explicit Congestion Notification (ECN), Differentiated Services Code Points (DSCPs), and ports. Because congestion control is critical to the stable operation of the Internet, applications and other protocols that choose to use UDP as an Internet transport must employ mechanisms to prevent congestion collapse and to establish some degree of fairness with concurrent traffic. They may also need to implement additional mechanisms, depending on how they use UDP. Some guidance is also applicable to the design of other protocols (e.g., protocols layered directly on IP or via IP-based tunnels), especially when these protocols do not themselves provide congestion control. This document obsoletes RFC 5405 and adds guidelines for multicast UDP usage.},
+}
