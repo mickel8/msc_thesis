@@ -1,3 +1,4 @@
+%! suppress = EscapeAmpersand
 \section{QUIC in WebRTC}
 \label{sec:quic-in-webrtc}
 This section outlines how QUIC can be used in WebRTC standard.
@@ -37,7 +38,7 @@ The whole protocol stack is presented in figure~\ref{fig:webrtc-stack}.
         \node (SDP) [multipart rect,above=0.0cm of WS,rectangle split part fill={gray!20,yellow!20}] {\nodepart[text width=3cm]{one} SDP \nodepart[text width=3cm]{two} SIP/XMPP/\\Other};
         \node [text rect,above=0.0cm of SDP]{Signaling Plane};
     \end{tikzpicture}
-    \caption{WebRTC stack.}
+    \caption{WebRTC protocol stack.}
     \label{fig:webrtc-stack}
 \end{figure}
 
@@ -210,7 +211,7 @@ Comparison of WebRTC protocol stacks is presented in figure ~\ref{fig:webrtc-sta
     \label{fig:webrtc-stack-comparision}
 \end{figure}
 
-\subsection{Packet encryption}
+\subsection{QUIC packet encryption}
 \label{subsec:packet-encryption}
 This section outlines encryption process of QUIC packet.
 In QUIC not only packet payload is encrypted but also some fields in packet header.
@@ -236,7 +237,7 @@ As a result we get a ciphertext and an authentication tag.
         \node (cipher text) [align=center, right=3cm of aead] {cipher text + \\ authentication tag}
         edge [<-] node[align=center, above] {output} (aead);
     \end{tikzpicture}
-    \caption{Payload encryption}
+    \caption{QUIC payload encryption scheme}
     \label{fig:payload_enc}
 \end{figure}
 
@@ -248,7 +249,7 @@ In the next step the sample is encrypted and its first 5 bytes are taken as mask
 At the end we perform XOR operation on predefined header fields and mask.
 As a result we get header with some fields being encrypted.
 Algorithm used to encrypt sample depends on negotiated cipher-suite.
-For example, if payload is encrypted with AES\_128\_GCM then sample will be encrypted using AES\_128\_ECB.
+For example, if payload is encrypted with AES\_128\_GCM then sample will be encrypted using AES\_128\_ECB\@.
 
 \begin{figure}[h]
     \centering
@@ -269,7 +270,7 @@ For example, if payload is encrypted with AES\_128\_GCM then sample will be encr
         \node (header)  at (payload |- xor) {header}
         edge [->] (xor);
     \end{tikzpicture}
-    \caption{Header encryption}
+    \caption{QUIC header encryption scheme}
     \label{fig:header_enc}
 \end{figure}
 
