@@ -54,7 +54,7 @@ Flags differ a little comparing to the Short Header but together with a packet n
         \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
         \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
     \end{bytefield}
-    \caption{Short Header format}
+    \caption{QUIC Short Header format}
     \label{fig:short-header-format}
 \end{figure}
 
@@ -82,7 +82,7 @@ In an interactive communication they are main packets and they will, for example
         \wordbox[tlr]{1}[bgcolor=lightred]{\tiny payload} \\
         \wordbox[blr]{1}[bgcolor=lightred]{\tiny $\cdots$}
     \end{bytefield}
-    \caption{1-RTT packet format}
+    \caption{QUIC 1-RTT packet format}
     \label{fig:1rtt-packet-format}
 \end{figure}
 
@@ -91,7 +91,7 @@ In an interactive communication they are main packets and they will, for example
 QUIC is integrated with TLS 1.3 providing confidentiality, integrity and authenticity of its packets.
 Integration with TLS 1.3 is described in details in RFC 9001~\cite{rfc9001}.
 It is based on negotiating both transport and cryptographic parameters in a single connection handshake which results in a low-latency connection establishment.
-Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP request using TCP/TLS and QUIC.
+Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP request using TCP/TLS and QUIC\@.
 
 \begin{figure}
     \centering
@@ -127,7 +127,7 @@ Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP requ
         \caption{HTTP request in QUIC}
         \label{subfig:http-req-quic}
     \end{subfigure}
-    \caption{HTTP request comparison}
+    \caption{HTTP request comparison between TCP/TLS and QUIC}
     \label{fig:low-latency-conn-est}
 \end{figure}
 
