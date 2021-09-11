@@ -1,3 +1,15 @@
 \section{Conclusions}
 \label{sec:conclusions}
-% Podsumowanie  i  wnioski.Podsumowanie  stanowi  krótkie  streszczenie  zawartości pracy  uwypuklające  oryginalne  wyniki  autora.  Zawiera  ono  również  krótkie uzasadnienie  dla  weryfikacji  tezy  pracy,  oparte  na  tych  wynikach.Wnioski  powinny dotyczyć  stopnia  realizacji  przyjętego  planubadawczo –projektowego    oraz możliwości  jego  kontynuacji,jak  również  możliwości  zastosowania  uzyskanych  i planowanych rezultatów w praktyce.
+QUIC is a new transport protocol that is intended to replace TCP\@.
+Although it is general purpose transport protocol, in most cases it has been deployed in conjunction with HTTP/3 so far.
+This document brings QUIC to a new domain called interactive communication.
+
+In terms of interactive communication some of the crucial mechanisms are QUIC encryption process and DATAGRAM frames.
+This document shows that none of them introduces a significant overhead to the connection bandwidth usage or transmission delay.
+Current systems can take advantage of QUIC reducing their complexity and becoming easier to maintain and develop.
+In this context ability to multiplex many logical channels, both reliable and unreliable in one physical connection seems to be invaluable.
+
+However, additional experiments are needed to clearly state if QUIC is a better choice than existing protocols.
+The most important area that requires further examination is congestion control.
+Advanced and detailed test scenarios in appropriately complex global network are crucial for determining its behaviour.
+Performing such experiments in a local configuration would not represent sufficiently real conditions.
