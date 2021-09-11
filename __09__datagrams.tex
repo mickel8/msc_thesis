@@ -16,7 +16,7 @@ They are presented in the following sections.
 \label{subsec:quic-flow-control}
 As stated in section~\ref{subsec:flow-control-and-congestion-control} there are two levels of flow control in QUIC -- stream level and connection level.
 Initial limits are set by the receiver in transport parameters during QUIC handshake.
-Subsequent updates are done by sending \textit{MAX\_STREAM\_DATA} or \textit{MAX\_DATA} frames.
+Subsequent updates are done by sending \\ \textit{MAX\_STREAM\_DATA} or \textit{MAX\_DATA} frames.
 It is implementation choice when and how much increase the limit.
 Frequently sending frames with small updates will result in increased bandwidth usage.
 On the other hand, less frequent but larger updates require more resources at the receiver.
@@ -63,19 +63,18 @@ After sending each message client was waiting for the response from the sever sp
 
 \subsubsection{Environment}
 \label{subsubsec:test-env}
-Figure~\ref{fig:dgram_test_env} shows test environment used in DATAGRAM frames experiments.
+Figure~\ref{fig:dgram-test-env} shows test environment used in DATAGRAM frames experiments.
 Both machines are in local network.
 
-
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{tikzpicture}[node distance = 6cm]
         \node (pc a) [anchor=west,align=center,label=below:{Server (192.168.1.3)}] {\includegraphics{cisco_icons/workstation.eps}};
         \node (pc b) [right=of pc a,align=center,label=below:{Client (192.168.1.40)}] {\includegraphics{cisco_icons/workstation.eps}}
         edge [<->] node {} (pc a);
     \end{tikzpicture}
-    \caption{Test environment}
-    \label{fig:dgram_test_env}
+    \caption{DATAGRAM frames test environment}
+    \label{fig:dgram-test-env}
 \end{figure}
 
 \subsubsection{Results}
@@ -84,7 +83,7 @@ Figure~\ref{fig:dgram_flow_control} presents results for the first test scenario
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control.png}
-    \caption{DATAGRAM flow control test}
+    \caption{DATAGRAM flow control test -- sequence diagram}
     \label{fig:dgram_flow_control}
 \end{figure}
 
@@ -96,17 +95,15 @@ Figure~\ref{fig:dgram_flow_control2} shows this behavior from different perspect
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control_2.png}
-    \caption{DATAGRAM flow control test}
+    \caption{DATAGRAM flow control test -- limits}
     \label{fig:dgram_flow_control2}
 \end{figure}
 Pink line indicates sum of stream flow control limit whereas blue bars represent data sent.
 We can see that despite the fact flow control limit is less than 5kB we send much more data -- over 45kB\@.
 
-
-
 Table~\ref{tab:dgram_packet_loss} illustrates results for the second test scenario.
 
-\begin{table}
+\begin{table}[h]
     \centering
     \resizebox{\columnwidth}{!}{%
     \begin{tabular}{|c | c | c | c | c | c |}
@@ -141,9 +138,7 @@ Figure~\ref{fig:dgram_ping_frames} illustrates this situation.
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_retransmission_ping.png}
-    \caption{Sending PING frame after server or client inactivity.
-    Client messages are described by blue arrows.
-    Numbers on the left and right side indicate time in ms when given packet was sent or received.}
+    \caption{Additional PING frames after server or client inactivity}
     \label{fig:dgram_ping_frames}
 \end{figure}
 

@@ -12,7 +12,7 @@ The former is responsible for relaying both media data (audio, video) and non-me
 The later is responsible for negotiating session parameters like audio and video codecs or transport addresses.
 The whole protocol stack is presented in figure~\ref{fig:webrtc-stack}.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \tikzstyle{rect}=[rectangle,minimum width=6cm,minimum height=1cm,draw=black,outer sep=0pt]
     \tikzstyle{base rect}=[rect,minimum width=12cm,outer sep=0pt]
@@ -210,6 +210,8 @@ Comparison of WebRTC protocol stacks is presented in figure ~\ref{fig:webrtc-sta
     \caption{Comparison of current WebRTC protocol stack and alternative WebRTC protocol stack when using QUIC}
     \label{fig:webrtc-stack-comparision}
 \end{figure}
+
+\clearpage
 
 \subsection{QUIC packet encryption}
 \label{subsec:packet-encryption}

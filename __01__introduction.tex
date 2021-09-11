@@ -31,9 +31,9 @@ One of them is definitely adaptive streaming.
 As a result a number of IETF drafts emerged to expand QUIC to new areas.
 
 This document brings QUIC to one more domain called interactive communication and tries to answer a question whether QUIC can introduce significant improvement in terms of interactive communication.
-To this end, theoretical analysis of QUIC congestion control, loss detection and encryption mechanisms as well as number of tests and experiments have been performed.
-In addition, two IETF drafts that are important in terms of interactive communication are discussed -- \textit{An Unreliable Datagram Extension to QUIC} and \textit{QUIC-based UDP Transport for Secure Shell (SSH)}.
-The former allows for sending unreliable messages over QUIC while the latter describes integration of QUIC with SSH protocol.
+To this end, theoretical analysis of QUIC encryption, loss detection and flow control mechanisms as well as number of tests and experiments have been performed.
+In addition, two IETF drafts that are important in terms of interactive communication are discussed -- \textit{An Unreliable Datagram Extension to QUIC} and \textit{RTP over QUIC}.
+The former allows for sending unreliable messages over QUIC while the latter describes encapsulation of RTP into QUIC\@.
 
 The structure of this document is as follows.
 Section~\ref{sec:state-of-the-art} presents state of the art and defines problems that will be addressed in this document.
@@ -41,5 +41,4 @@ Section~\ref{sec:quic-overview} introduces basic concepts of QUIC and compares Q
 Section~\ref{sec:quic-in-webrtc} presents how QUIC can simplify WebRTC protocol stack.
 It also describes packet encryption process in QUIC, answers the question if header encryption introduces significant overhead to the whole packet encryption and compares QUIC encryption process with RTP one.
 Section~\ref{sec:datagrams} is dedicated to DATAGRAM frames in QUIC -- how they work and behave in different scenarios.
-Section~\ref{sec:congestion_control} outlines the congestion control mechanism in QUIC and compares it to the congestion control mechanism in TCP\@.
 Section~\ref{sec:conclusions} concludes this document.
