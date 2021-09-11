@@ -66,9 +66,14 @@ After sending each message client was waiting for the response from the sever sp
 Figure~\ref{fig:dgram_test_env} shows test environment used in DATAGRAM frames experiments.
 Both machines are in local network.
 
-\begin{figure}[h]
+
+\begin{figure}
     \centering
-    \includegraphics[width=0.8\textwidth]{img/__09__datagrams/dgram_test_env.pdf}
+    \begin{tikzpicture}[node distance = 6cm]
+        \node (pc a) [anchor=west,align=center,label=below:{Server (192.168.1.3)}] {\includegraphics{cisco_icons/workstation.eps}};
+        \node (pc b) [right=of pc a,align=center,label=below:{Client (192.168.1.40)}] {\includegraphics{cisco_icons/workstation.eps}}
+        edge [<->] node {} (pc a);
+    \end{tikzpicture}
     \caption{Test environment}
     \label{fig:dgram_test_env}
 \end{figure}
