@@ -1,0 +1,58 @@
+\section{Video}
+\label{sec:video}
+
+\subsection{Architecture}
+\label{subsec:architecture}
+
+Figure~\ref{fig:video-app-architecture} illustrates architecture of video quic application.
+
+
+\begin{figure}
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=4cm,minimum height=1cm,draw=black]
+    \scalebox{.75}{%
+    \begin{tikzpicture}
+        \node[label=below:{H264 video file}](file){
+        \begin{tikzpicture}
+            \draw (0,0) -- (0,1.2) -- (0.7,1.2) -- (0.7,0.8) -- (1,0.8) -- (1,0) -- cycle;
+            \draw (0.7,1.2) -- (1,0.8);
+            \foreach \y in {0.2,0.4,0.6}{
+            \draw (0.2,\y) -- (0.8,\y);
+            \draw (0.2,0.8) -- (0.6,0.8);
+            \draw (0.2,1) -- (0.6,1);
+            }
+        \end{tikzpicture}
+        };
+        \node[rect,below=of file] (file-src) {File Source}
+        edge [<-] node[align=center,right] {} (file);
+        \node[rect,below=of file-src] (video-parser) {Video Parser}
+        edge [<-] node[align=center,right] {} (file-src);
+        \node[rect,below=of video-parser] (rtp-session-bin) {RTP Session Bin}
+        edge [<-] node[align=center,right] {} (video-parser);
+        \node[rect,below=of rtp-session-bin] (realtimer) {Realtimer}
+        edge [<-] node[align=center,right] {} (rtp-session-bin);
+        \node[rect,below=of realtimer] (quic-sink) {Quic Sink}
+        edge [<-] node[align=center,right] {} (realtimer);
+        \node[below=of quic-sink, label=center:Internet] (internet) {\includegraphics{cisco_icons/cloud.eps}}
+        edge [<-] node[align=center,right] {} (quic-sink);
+        \node[rect,below=of internet] (quic-src) {Quic Source}
+        edge [<-] node[align=center,right] {} (internet);
+        \node[rect,below=of quic-src] (rtp-session-bin-2) {RTP Session Bin}
+        edge [<-] node[align=center,right] {} (quic-src);
+        \node[rect,below=of rtp-session-bin-2] (video-parser-2) {Video Parser}
+        edge [<-] node[align=center,right] {} (rtp-session-bin-2);
+        \node[rect,below=of video-parser-2] (video-decoder) {Video Decoder}
+        edge [<-] node[align=center,right] {} (video-parser-2);
+        \node[rect,below=of video-decoder] (sdl-player) {SDL player}
+        edge [<-] node[align=center,right] {} (video-decoder);
+
+        \node[rect,dashed,minimum width=12cm,fit=(file)(quic-sink)] (server-side) {};
+        \node[rect,dashed,minimum width=12cm,fit=(quic-src)(sdl-player)] (client-side) {};
+        \node[right] at (server-side.west) {\large server side};
+        \node[right] at (client-side.west) {\large client side};
+    \end{tikzpicture}%
+    }
+    \label{fig:video-app-architecture}
+    \caption{Architecture of video quic application}
+\end{figure}
+
