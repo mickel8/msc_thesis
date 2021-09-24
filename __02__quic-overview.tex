@@ -3,97 +3,93 @@
 
 \section{QUIC overview}
 \label{sec:quic-overview}
-QUIC is a connection-based, multistream protocol that uses UDP under the hood.
+QUIC is a connection-based, multistream protocol that uses UDP/IP under the hood.
 It is integrated with TLS and provides own congestion control and flow control mechanisms.
 Data sent over QUIC is delivered in a reliable, ordered way.
-Together with QUIC there comes a new version of HTTP called HTTP/3.
 
 This section outlines main features of QUIC and compares QUIC to the other transport protocols.
 
-\subsection{Packet types in QUIC}
-\label{subsec:quic-packet-types}
+\subsection{Data structures}
+\label{subsec:quic-data-structures}
 The most outer entity in QUIC is a packet.
-Each QUIC packet consists of a header that can take long or short form and one or more QUIC frames.
-QUIC packets are directly encapsulated into UDP datagrams.
-This is illustrated in figure~\ref{fig:quic-packet-format}.
-A single UDP datagram can also coalesce many QUIC packets, however, this feature is not important in terms of regular data exchange.
+QUIC defines different types of packets.
+Each packet consists of a header which is followed by a type-specific payload.
 
-\begin{figure}
-    \centering
-    \begin{bytefield}{32}
-        \begin{leftwordgroup}{\tiny UDP header}
-            \bitbox{16}{\tiny source port} & \bitbox{16}{\tiny destination port} \\
-            \bitbox{16}{\tiny length} & \bitbox{16}{\tiny checksum}
-        \end{leftwordgroup} \\
-        \begin{leftwordgroup}{\tiny UDP data}
-            \begin{rightwordgroup}{\tiny QUIC packet}
-                \wordbox{1}{\tiny quic header} \\
-                \wordbox[tlr]{1}{\tiny  quic frames} \\
-                \wordbox[blr]{1}{\tiny $\cdots$}
-            \end{rightwordgroup}
-        \end{leftwordgroup}
-    \end{bytefield}
-    \caption{QUIC packet format}
-    \label{fig:quic-packet-format}
-\end{figure}
-
-QUIC defines two types of header: short and long.
-Figure~\ref{fig:short-header-format} illustrates Short Header format.
-The first byte encodes miscellaneous flags.
-Next, there is a destination connection ID that takes at most 20 bytes and a packet number that takes from 1 to 4 bytes.
+Header can take long or short form.
+Packets with long headers are used at the beginning of the communication, before establishing 1-RTT keys.
+After negotiating cryptographic context QUIC switches to the packet type with short header form for minimizing data sent
+through the network.
+Short header form is illustrated in figure~\ref{fig:short-header-format}.
+It consists of miscellaneous flags which take one byte, optional destination connection ID and packet number.
 Total size of Short Header is from 2 to 25 bytes.
-Fields marked with red color are subject to an encryption process.
-On the other hand Long Header additionally includes version, destination connection ID length, source connection ID length and source connection ID\@.
-Flags differ a little comparing to the Short Header but together with a packet number length they also take 1 byte.
+On the other hand Long Header additionally includes version, destination connection ID length, source connection ID
+length and source connection ID fields.
+It misses packet number field and its flags differ a little comparing to the Short Header but they also take 1 byte.
+Long header form is illustrated in figure~\ref{fig:long-header-format}.
 
 \begin{figure}
     \centering
     \begin{bytefield}[bitwidth=4em]{8}
         \bitheader{0-7} \\
-        \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{1}{\tiny spin bit} & \bitbox{2}[bgcolor=lightred]{\tiny reserved bits} & \bitbox{1}[bgcolor=lightred]{\tiny key phase} & \bitbox{2}[bgcolor=lightred]{\tiny packet number length} \\
+        \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{1}{\tiny spin bit} & \bitbox{2}{\tiny reserved bits} & \bitbox{1}{\tiny key phase} & \bitbox{2}{\tiny packet number length} \\
         \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
-        \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
+        \wordbox{1}{\tiny packet number (8 - 32)}
     \end{bytefield}
     \caption{QUIC Short Header format}
     \label{fig:short-header-format}
 \end{figure}
 
-QUIC introduces also different types of packets and frames.
-Depending on specific packet type, it can contain different frame types.
-For example \textit{Handshake} packet can contain \textit{CRYPTO}, \textit{PING}, \textit{PADDING}, \textit{ACK} or \textit{CONNECTION\_CLOSE} frames.
-We can divide packet types basing on header form they use.
-Following packet types use Long Header: \textit{Version Negotiation}, \textit{Initial}, \textit{0-RTT}, \textit{Handshake}, \textit{Retry}.
-They are sent at the beginning of communication and therefore they are not covered more here.
-
-Packet that uses Short Header is called \textit{1-RTT}.
-1-RTT packets are sent after version and 1-RTT keys negotiation.
-In an interactive communication they are main packets and they will, for example, convey media data.
-1-RTT packet format is illustrated in figure~\ref{fig:1rtt-packet-format}.
-
 \begin{figure}
     \centering
-    \begin{bytefield}[bitwidth=3.5em]{8}
+    \begin{bytefield}[bitwidth=4em]{8}
         \bitheader{0-7} \\
-        \begin{leftwordgroup}{\tiny short \\ \tiny header}
-            \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{1}{\tiny spin bit} & \bitbox{2}[bgcolor=lightred]{\tiny reserved bits} & \bitbox{1}[bgcolor=lightred]{\tiny key phase} & \bitbox{2}[bgcolor=lightred]{\tiny packet number length} \\
-            \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
-            \wordbox{1}[bgcolor=lightred]{\tiny packet number (8 - 32)}
-        \end{leftwordgroup} \\
-        \wordbox[tlr]{1}[bgcolor=lightred]{\tiny payload} \\
-        \wordbox[blr]{1}[bgcolor=lightred]{\tiny $\cdots$}
+        \bitbox{1}{\tiny header form} & \bitbox{1}{\tiny fixed bit} & \bitbox{2}{\tiny long packet type} & \bitbox{4}{\tiny Type-Specific Bits} \\
+        \wordbox{4}{\tiny Version} \\
+        \wordbox{1}{\tiny Destination Connection ID Length} \\
+        \wordbox{1}{\tiny destination connection ID (0 - 160)} \\
+        \wordbox{1}{\tiny Source Connection ID Length} \\
+        \wordbox{1}{\tiny Source Connection ID (0 - 160)}
     \end{bytefield}
-    \caption{QUIC 1-RTT packet format}
-    \label{fig:1rtt-packet-format}
+    \caption{QUIC Long Header format}
+    \label{fig:long-header-format}
 \end{figure}
 
-\subsection{Security and low-latency connection establishment}
-\label{subsec:security-and-low-latency-connection-establishment}
+QUIC defines following types of packets that use long header form: Version Negotiation, Initial, 0-RTT, Handshake, Retry and one packet type that uses short header form called 1-RTT\@.
+
+Payload form depends on a packet type.
+It includes type-specific fields which are in most cases followed by QUIC frames.
+Payload can include many frames and many frame types.
+Some of the QUIC frames are: PING, ACK, CRYPTO or STREAM\@.
+Different frame types can appear only in specific packet types.
+For example STREAM frame can only be included in 0-RTT or 1-RTT packets while CRYPTO frame can appear in Initial, Handshake or 1-RTT packets.
+Version Negotiation, Stateless Reset, and Retry packets does not include any QUIC frames at all.
+
+QUIC packets are directly encapsulated into UDP datagrams.
+One UDP datagram can coalesce multiple QUIC packets.
+The only requirement is that if there is a QUIC packet without length field present it has to be placed at the end of the UDP datagram.
+
+\subsection{UDP based}
+\label{subsec:udp-based}
+As stated in the previous section, QUIC packets are directly encapsulated in UDP datagrams.
+This makes QUIC user-level protocol which means it can be implement as a usual library without modifying operating system kernel.
+On the other hand a lot of government institutions as well as companies blocks incoming or outgoing UDP traffic and allow
+only for communication via TCP or TLS on port 443.
+
+\subsection{Security}
+\label{subsec:security}
 QUIC is integrated with TLS 1.3 providing confidentiality, integrity and authenticity of its packets.
 Integration with TLS 1.3 is described in details in RFC 9001~\cite{rfc9001}.
-It is based on negotiating both transport and cryptographic parameters in a single connection handshake which results in a low-latency connection establishment.
+It is based on negotiating both transport and cryptographic parameters in a single connection handshake.
+Encryption in QUIC is mandatory which means there is no possibility to send unencrypted data.
+In addition, besides payload QUIC encrypts also some fields from header.
+One of the questions this thesis aims to answer is whether QUIC encryption scheme introduces a significant overhead to the interactive communication.
+
+\subsection{Connection establishment}
+\label{subsec:connection-establishment}
+Combining transport and cryptographic handshake results in significant reduction of connection establishment time.
 Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP request using TCP/TLS and QUIC\@.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{subfigure}{.5\textwidth}
         \begin{sequencediagram}
@@ -133,7 +129,8 @@ Figure~\ref{fig:low-latency-conn-est} compares time needed for sending HTTP requ
 
 Round Trip Time (RTT) is a time needed for transporting a message from one side to the other and back again.
 Standard HTTP request using TCP/TLS stack requires 3-RTT -- one for TCP handshake, one for TLS handshake and one for HTTP request.
-Even though TCP handshake sends 3 messages it is still counted as 1-RTT because we do not have to wait for a response to the last message but we can immediately send next data, which in this case is data for TLS handshake.
+Even though TCP handshake sends 3 messages it is still counted as 1-RTT as there is no need to wait for a response to the last message.
+Instead, we can immediately send next data which is in this case data for TLS handshake.
 
 QUIC takes another approach.
 It combines transport and cryptographic handshakes reducing time needed for establishing a connection.
@@ -160,16 +157,19 @@ This scenario is presented in figure~\ref{fig:http-req-quic-0rtt}
     \label{fig:http-req-quic-0rtt}
 \end{figure}
 
-The only limitation of integrating TLS with QUIC is that there is no possibility to send unencrypted data.
-
 \FloatBarrier
 
-\subsection{Stream multiplexing}
-\label{subsec:stream-multiplexing}
-QUIC is a multiplexed protocol which means we can open many streams in one QUIC connection.
+\subsection{Streams}
+\label{subsec:streams}
 Stream is an ordered sequence of bytes.
 Each stream can be unidirectional or bidirectional and can be opened by a client or by a server.
 Different types of streams can have different flow control limits (see section~\ref{subsec:flow-control-and-congestion-control}).
+One QUIC connection can multiplex many streams.
+QUIC packets does not belong to streams -- i.e.\ they do not have any stream id field.
+An entity that can be identified with stream is QUIC frame mainly STREAM frame but also other frame types like MAX\_STREAM\_DATA or STREAM\_DATA\_BLOCKED\@.
+A QUIC implementation should also provide means to define stream priority.
+Data that belongs to streams with lower (or higher) priority will be put on the wire before streams with higher (or lower)
+priority.
 Data in specific streams is carried independently which means that losing packet in one stream does not affect flow in other streams.
 Figure~\ref{fig:stream-multiplexing} shows this scenario.
 One of the packets in stream 1 (marked as gray) was lost and needs to be retransmitted blocking subsequent packets (marked as black) on the receiver side.
@@ -204,10 +204,10 @@ However, thanks to the stream multiplexing QUIC resolves this problem and stream
         \filldraw [fill=cyan!20, draw=black] (6.25, -0.25) rectangle (7, 0.25);
 
         \draw [->, postaction={decorate,decoration={raise=2ex, text along path,text align=center,text={stream 3}}}] (2, -1.5) -- (7.5, -1.5);
-        \filldraw [fill=purple!20, draw=black] (2.5, -1.75) rectangle (3.25, -1.25);
-        \filldraw [fill=purple!20, draw=black] (3.75, -1.75) rectangle (4.5, -1.25);
-        \filldraw [fill=purple!20, draw=black] (5, -1.75) rectangle (5.75, -1.25);
-        \filldraw [fill=purple!20, draw=black] (6.25, -1.75) rectangle (7, -1.25);
+        \filldraw [fill=red!20, draw=black] (2.5, -1.75) rectangle (3.25, -1.25);
+        \filldraw [fill=red!20, draw=black] (3.75, -1.75) rectangle (4.5, -1.25);
+        \filldraw [fill=red!20, draw=black] (5, -1.75) rectangle (5.75, -1.25);
+        \filldraw [fill=red!20, draw=black] (6.25, -1.75) rectangle (7, -1.25);
 
 
     \end{tikzpicture}
@@ -222,10 +222,10 @@ Connection IDs can be variable length.
 QUIC uses connection IDs to route packets to proper endpoint.
 This way, as long as there is an alternative network path, QUIC is resilient to network changes avoiding restarting the connection when an endpoint changes its transport address (IP or port).
 
-\subsection{Flow control and congestion control mechanisms}
+\subsection{Flow control}
 \label{subsec:flow-control-and-congestion-control}
-Flow control limits amount of data that can be sent to the receiver.
-Receiver can announce how much data it is able to process/buffer and sender must not exceed this limit until it is updated.
+Flow control is a mechanism which allows receiver to announce how much data it is able to process/buffer.
+Sender must not exceed this limit until it is updated.
 In QUIC, flow control limits can be set on two levels.
 The first one is stream level.
 This limit is set per stream type e.g.\ for all unidirectional streams opened by the peer or for all bidirectional streams opened locally.
@@ -234,12 +234,13 @@ The second one is connection level and it limits overall data amount that can be
 QUIC allows also for limiting number of streams that can be opened by the peer.
 These limits are also set per stream type -- unidirectional or bidirectional and initiated by a peer or locally.
 
-On the other hand congestion control limits amount of data that can be sent through the network.
-Whenever there is a danger that some middle-boxes like routers can be overwhelmed by the amount of data they have to process, they require sender to slow down its transmission rate.
-This is often done using ECN (Explicit Congestion Notification) flag in an IP packet.
-RFC 9001~\cite{rfc9001} defines congestion controller similar to TCP NewReno.
+\subsection{Congestion control}
+\label{subsec:congestion-control}
+Congestion control also limits amount of data that can be transmitted by a sender but instead of protecting receiver it aims to prevent from overwhelming network middle-boxes like routers and if such overwhelm occurs it helps to recover from it.
+RFC 9001~\cite{rfc9001} describes in details sender-side QUIC congestion controller similar to TCP NewReno.
+It is triggered when one of QUIC packets is lost or when sender receives IP packet with ECN-CN flag set.
 However, any other congestion controller that meets requirements defined in section 3.1 of RFC 8085~\cite{rfc8085} can be used.
-This makes QUIC congestion control mechanism pluggable.
+This makes QUIC congestion control mechanism pluggable and allows for adapting congestion control algorithm to specific use case.
 
 \subsection{Reliability}
 \label{subsec:reliability}
@@ -250,7 +251,7 @@ One of them called \textit{An Unreliable Datagram Extension to QUIC}\cite{bider-
 This can take place in simultaneously to the reliable communication.
 Unreliable messages are not subject to flow control mechanisms however, they are congestion controlled.
 Each unreliable message is also acknowledged so that application layer can be provided with the packet loss information.
-Section~\ref{sec:datagrams} describes Datagram extension in details.
+Section~\ref{subsec:partial-reliability} describes Datagram extension in details.
 
 \subsection{QUIC against other transport protocols}
 \label{subsec:quic_against_other_transport_protocols}
@@ -274,7 +275,7 @@ Unlike TCP, UDP also allows for multicast transmission.
 However, multicast is rarely used, mostly in local networks.
 
 \subsubsection{SCTP}
-Stream Control Transmission Protocol -- reliable, based on UDP, message oriented transport protocol.
+Stream Control Transmission Protocol -- partially reliable, based on UDP, message oriented transport protocol.
 Unlike TCP, SCTP is multistream protocol.
 SCTP is partially ordered but it also allows for sending unordered messages.
 Another feature of SCTP is multi-homing in which an endpoint uses two different addresses.
@@ -289,19 +290,19 @@ Table~\ref{tab:protocols_comparision} presents a short summary of transport prot
     \resizebox{\columnwidth}{!}{%
     \begin{tabular}{|c | c | c | c | c |}
         \hline
-        & TCP           & UDP              & SCTP              & QUIC          \\
+        & TCP           & UDP              & SCTP               & QUIC                \\
         \hline
-        reliability        & reliable      & unreliable       & reliable          & reliable      \\
+        reliability        & reliable      & unreliable       & partially reliable & reliable/unreliable \\
         \hline
-        transmission       & byte oriented & message oriented & message oriented  & byte oriented \\
+        transmission       & byte oriented & message oriented & message oriented   & byte oriented       \\
         \hline
-        flow control       & yes           & no               & yes               & yes           \\
+        flow control       & yes           & no               & yes                & only for streams    \\
         \hline
-        congestion control & yes           & no               & yes               & yes           \\
+        congestion control & yes           & no               & yes                & yes                 \\
         \hline
-        packets order      & ordered       & unordered        & partially ordered & ordered       \\
+        packets order      & ordered       & unordered        & partially ordered  & ordered             \\
         \hline
-        multistream        & no            & no               & yes               & yes           \\
+        multistream        & no            & no               & yes                & yes                 \\
         \hline
     \end{tabular}%
     }

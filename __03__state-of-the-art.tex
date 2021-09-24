@@ -1,6 +1,12 @@
 \section{State of the art}
 \label{sec:state-of-the-art}
 
+The number of QUIC publications at the moment of writing this thesis is limited.
+The main reason of such situation is that QUIC was standardize just a few months ago.
+In this section I present an overview of publications that are important in terms of current main QUIC usage which is
+HTTP/3, are somehow related to transporting media over QUIC or are dedicated to aspects that are also important
+in interactive communication.
+
 \textit{The QUIC Fix for Optimal Video Streaming} article~\cite{the-quic-fix-for-optimal-video-streaming} introduces unreliable data transmission over QUIC and presents how combination of reliable and unreliable transmission fares in video streaming and outperforms TCP and reliable mode of QUIC\@.
 Authors of this document tag H.264 video frames depending on their importance.
 \textit{I-Frames} which are independent frames meaning they can be displayed without any additional frames are marked to be sent reliably.
@@ -8,7 +14,7 @@ Authors of this document tag H.264 video frames depending on their importance.
 The same approach is applied to \textit{B-Frames} that depends on both \textit{I-Frames} and \textit{P-frames}.
 Authors state that the loss of \textit{P-Frames} or \textit{B-Frames} has minimal or no impact on the user's quality of experience (QoE).
 They use i.a. \textit{buffering ratio (bufRatio)} and \textit{rate of buffering (rateBuf)} metrics to measure the difference in performance of streaming video over codec-agnostic DASH protocol used with TCP, traditional QUIC and QUIC with addition of unreliable transmission.
-\textit{BufRatio} is the amount of time spent on buffering video comparing to the total session time (i.e.\ playing plus buffering time), represented as a percentage.
+\textit{BufRatio} is the amount of time spent on re-buffering video comparing to the total video duration, represented as a percentage.
 \textit{RateBuf} is the frequency of the buffering events~\cite{impact-of-video-quality-on-user-engagement}.
 As a result, \textit{bufRatio}, with packet loss set to 0.64\%, for TCP is 105\%, for QUIC is 30\% and for QUIC with addition of unreliable data transmission is less than 1\%.
 \textit{RateBuf}, with the same packet loss, is equal to 50\% for TCP, 19\% for QUIC and nearly 0\% for QUIC with addition of unreliable data transmission.
@@ -27,12 +33,8 @@ Connection-switch scenario is about changing the connection from e.g.\ Wi-Fi to 
 Multiplexing scenario is about comparing different stream multiplexing techniques i.e.\ HTTP/1.1 over varying number of TCP connections, HTTP/2 with parallel requests over a single TCP connection and QUIC over a single UDP connection.
 Fairness scenario is about checking fairness of congestion control mechanisms while there are multiple competing clients.
 Authors also used three different adaptive algorithms: BASIC, SARA and BBA-2.
-In the frame-seek scenario for BASIC algorithm QUIC behaved better by reducing bufRatio (called by authors rebuffer rate) from 3\% for WiFi and LTE to 1\% for WiFi and 2\% for LTE\@.
-For 3G networks, QUIC reduced bufRatio from 5\% to 2\%.
-For SARA and BBA-2 algorithms the results are also in favor of QUIC\@.
-In the WiFi-LTE connection-switch scenario, QUIC reduced numerically bufRatio by 1\%, from 5\% to 4\% for BBA-2, from 4\% to 3\% for SARA and from 3\% to 2\% for BASIC\@.
-Average playback bitrates also were a little higher for QUIC\@.
-In the WiFi-3G connection-switch scenario, QUIC also behaved better and the reduction of bufRatio was similar except for BASIC algorithm where QUIC reduced bufRatio from 13\% to 6\%.
+In the frame-seek scenario QUIC behaved better for all adaptive algorithms and types of networks reducing numerically \textit{rebufferRate} metric (which is a similar metric to \textit{bufRatio}) by 1--3\%.
+In the WiFi-LTE and WiFi-3G connection-switch scenario, QUIC also behaved better for all adaptive algorithms reducing numerically \textit{rebufferRate} by 1\% for SARA and BBA-2 and by 7\% for BASIC\@.
 Evaluation of different multiplexing techniques showed that in the typical network conditions all three methods resulted in the similar average playback bitrate.
 In the large delay and typical loss network, QUIC performed best.
 For typical delay and large loss as well as for large delay and large loss, HTTP/1.1 with varying number of TCP connections was better than QUIC\@.
@@ -43,6 +45,44 @@ For competing clients, QUIC still was able to achieve better bitrate than TCP (a
 In the large delay scenario, the results were similar to the large loss scenario.
 The last one scenario with large loss and large delay showed that TCP client was able to achieve higher bitrate (about 16\%) both when competing and not competing with QUIC client.
 
-The objective of this document is to overview QUIC in terms of one more domain -- interactive communication.
-The main question addressed here is which QUIC features can improve interactive communication.
-By improvement I mean better adoption to changing network parameters and faster recovery after packet loss as well as reducing complexity of current systems and making them more developer friendly.
+\textit{And QUIC meets IoT: performance assessment of MQTT over QUIC} article~\cite{and-quic-meets-iot} maps MQTT to QUIC
+and compares its performance with state-of-the-art MQTT over TCP\@.
+Authors performed two tests.
+In the first one, they send 1000 MQTT messages to the broker which then are sent to the subscriber.
+In the second one, they establish MQTT connection and send only one message and close the connection.
+The purpose of the second scenario was to see improvements introduced by QUIC in terms of faster connection establishment.
+Both tests were performed in three different, emulated network environments: Wi-Fi, 4G/LTE and Satellite.
+Authors states that MQTT over QUIC outperforms MQTT over TCP however, they expected a bigger advantage
+of QUIC in the second scenario due to QUIC 0-RTT packets.
+
+\textit{Emerging Interactive Applications over QUIC} article~\cite{9045245} compares QUIC performance with TCP and UDP
+using three multimedia services.
+The first service which is cloud gaming represents an interactive communication.
+The second and third ones which are 4K video streaming and client-server online gaming represent classic multimedia
+applications.
+Each client in each service was connected to the Access Point which had access to the Internet.
+The bottle neck was the connection between AP and router to which three servers (one for each service) were connected.
+The first experiment tests QUIC fairness and shows that average achieved bandwidth by Cloud Gaming and 4K streaming
+is more balanced when using QUIC\@.
+The second experiment tests QUIC end-to-end latency and shows a significant delay reduction for all three services when using QUIC\@.
+In the last scenario, authors compare Round Trip Time when streaming 4K video using QUIC and TCP\@.
+Experiment shows that RTT for QUIC is lower than for TCP\@.
+To sum up in all scenarios QUIC outperforms traditional transport protocols both for interactive and classic multimedia
+applications.
+
+\textit{Media QoE Enhancement With QUIC} article~\cite{7562075} uses QUIC stream prioritization to improve Quality of Experience (QoE).
+Authors focus on MPEG-DASH based application.
+They prioritize streams that carry multimedia data depending on the client's player buffer.
+If its level is below 20 sec then client requests subsequent media chunks with high priority.
+For buffer level between 20 and 80 sec medium priority is requested and for buffer level above 80 sec high priority.
+The experiment shows that stream prioritization gain in Initial Buffering Time can be from 6\% to 49\% depending on
+bandwidth limit and video resolution.
+%
+%\textit{Impact of ACK Scaling Policies on QUIC Performance} article~\cite{9524947}
+%
+%
+%
+%\textit{An attempt at introducing Multipath in QUIC} article~\cite{8806051}
+
+%\textit{A Pure HTTP/3 Alternative to MQTT-over-QUIC in Resource-Constrained IoT} article~\cite{iot} compares performance
+%of public-subscribe architecture realized with HTTP/3 over QUIC and MQTT over QUIC\@.

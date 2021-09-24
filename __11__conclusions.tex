@@ -1,15 +1,21 @@
 \section{Conclusions}
 \label{sec:conclusions}
-QUIC is a new transport protocol that is intended to replace TCP\@.
+QUIC is a new transport protocol and offers very promising and interesting set of features.
 Although it is general purpose transport protocol, in most cases it has been deployed in conjunction with HTTP/3 so far.
-This document brings QUIC to a new domain called interactive communication.
+
+In terms of ease of usage and deployment QUIC is implemented in user space which simplifies its development and
+deployment processes.
+However it is worth mentioning that firewalls of some networks (especially government ones) may block entire UDP traffic.
+Such networks require extra work to allow QUIC packets.
 
 In terms of interactive communication some of the crucial mechanisms are QUIC encryption process and DATAGRAM frames.
-This document shows that none of them introduces a significant overhead to the connection bandwidth usage or transmission delay.
-Current systems can take advantage of QUIC reducing their complexity and becoming easier to maintain and develop.
-In this context ability to multiplex many logical channels, both reliable and unreliable in one physical connection seems to be invaluable.
+This thesis shows that none of them introduces a significant overhead to the connection bandwidth usage or transmission delay.
+Current systems and standards like WebRTC can take advantage of QUIC reducing their complexity and becoming easier to maintain and develop.
+In this context ability to multiplex many logical channels, both reliable and unreliable in one physical connection seems to be
+very comfortable from the developer perspective.
 
-However, additional experiments are needed to clearly state if QUIC is a better choice than existing protocols.
+\subsection{Further work}
+\label{subsec:further-work}
+Additional experiments are needed to clearly state if QUIC is a better choice than existing protocols.
 The most important area that requires further examination is congestion control.
 Advanced and detailed test scenarios in appropriately complex global network are crucial for determining its behaviour.
-Performing such experiments in a local configuration would not represent sufficiently real conditions.

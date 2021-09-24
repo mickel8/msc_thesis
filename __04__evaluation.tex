@@ -1,0 +1,978 @@
+%! suppress = EscapeAmpersand
+
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+%\subsection{QUIC and HTTP/3}
+%\label{subsec:quic-and-http/3}
+
+\subsection{Hello world application}
+\label{subsec:hellow-world-application}
+QUIC is a user level protocol which means there is no need to recompile operating system kernel to provide it with support
+for QUIC\@.
+The most popular implementations of QUIC at the moment of writing this thesis are those written in Rust and Go.
+However there are plenty of other implementations e.g.\ in C, Java or C++.
+
+\subsubsection{Importing QUIC in a project}
+Importing QUIC in a project depends on used language and is as easy as importing any other dependency.
+In Rust it is done simply by putting \lstinline{"quiche=0.10.0"} in \textit{Cargo.toml}.
+In C user has to compile QUIC library as a static or dynamic one and include it in its \textit{Makefile}, \textit{CMakeLists.txt}
+or any other build tool.
+
+\subsubsection{Libraries architecture}
+In my thesis I was mostly using two implementations -- \textit{quiche} which is written in Rust and \textit{lsquic} which is written in C\@.
+The way both libraries work is presented in figure~\ref{fig:quic-implementations-architecture}.
+\begin{figure}
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=2cm,minimum height=2cm,draw=black]
+    \begin{tikzpicture}[node distance=2cm]
+        \node[rect,align=center] (quic-library) {QUIC\\library};
+
+        \node[rect,align=center,right=of quic-library] (server-side) {server\\side}
+        edge [<-,bend right] node[above,align=center] {QUIC\\packets} (quic-library)
+        edge [->,bend left] node[align=center,below] {QUIC\\packets} (quic-library);
+        \node[rectangle,draw=black,above=of server-side.south] (server-socket) {sock};
+
+        \node[rect,align=center,left=of quic-library] (quic-library-2) {QUIC\\library};
+        \node[rect,align=center,left=of quic-library-2] (client-side) {client\\side}
+        edge [<-,bend right] node[below,align=center] {QUIC\\packets} (quic-library-2)
+        edge [->,bend left] node[align=center,above] {QUIC\\packet} (quic-library-2);
+        \node[rectangle,draw=black,above=of client-side.south] (client-socket) {sock};
+
+        \draw[<->,bend left] (client-socket.north) to node[align=center,above] {QUIC packets} (server-socket.north);
+    \end{tikzpicture}
+    \caption{Architecture of QUIC implementations}
+    \label{fig:quic-implementations-architecture}
+\end{figure}
+Both quiche and lsquic are used to generate QUIC packets that has to be transmitted to the other side.
+This transmission is left to the user.
+None of libraries manages UDP socket for the user.
+QUIC packets are generated whenever user sends some data, receives some data or connection timeout expires.
+This approach has one advantage -- user can use its own UDP socket which can be helpful when integrating QUIC
+with some other already existing systems.
+On the other hand user has to exactly know when to call which functions.
+For example whenever some QUIC packets are received from the network and passed to the QUIC engine
+user has to call function that will generate some QUIC control packets like those containing ACK frames
+and has to send them to the peer.
+Calling functions at a wrong moment (too late) can result in some misbehaviour of QUIC engine (e.g.\
+we can receive some more packets due to not sending acknowledgments in a proper time).
+
+\FloatBarrier
+
+\subsubsection{Example usage}
+Following listing presents simplified example usage of quiche library.
+It is taken from quiche repository.
+\begin{lstlisting}[label={lst:lstlisting2},caption={Simplified example usage of quiche library.},captionpos=b]
+loop {
+    poll.poll(&mut events, conn.timeout()).unwrap();
+
+    loop {
+        // if there are no events it means
+        // that timer has expired - handle it and
+        // break reading loop
+        if events.is_empty() {
+            conn.on_timeout();
+            break;
+        }
+
+        // read data from UDP socket
+        let read = socket.recv_from(&mut buf);
+        if read == 0 {
+            break;
+        }
+
+        // process potentially coalesced packets
+        conn.recv(&mut buf).unwrap();
+    }
+
+    // send actual data
+    if conn.is_established() && !req_sent {
+        conn.stream_send(req);
+        req_sent = true;
+    }
+
+    // check wheather there is any data
+    // in any stream for the user
+    for stream in conn.readable() {
+        conn.stream_recv(stream, &mut buf);
+        print!("Got data: {}", buf);
+    }
+
+    // generate outgoing QUIC packets
+    // and send them on UDP socket
+    loop {
+        let written = conn.send(&mut out);
+        if written == 0 {
+            break;
+        }
+        socket.send(&out);
+    }
+}
+\end{lstlisting}
+
+There is one main loop which consists of three more loops.
+The first one is responsible for reading data from socket and feeding it to the quiche.
+If there is no data to read but connection timer has expired then \lstinline{conn.on_timeout()} has to be called.
+After calling \lstinline{conn.on_timeout()} next call to \lstinline{conn.send()} will generate some QUIC control packets.
+The second loop is responsible for generating quic packets using \lstinline{conn.send()} and sending them through on
+the UDP socket.
+There is also a \textit{for} loop that is responsible for checking if we received any data on any stream
+
+\subsubsection{Summary}
+QUIC libraries can be very easily imported into any environment.
+However some of them like quiche may require from a user more awareness what needs to be done e.g.\
+when to call \lstinline{conn.on_timeout()} or \lstinline{conn.send()} functions.
+On the other hand leaving managing the socket to the user guarantees more flexibility and allows for easier integration with
+other protocols or standards.
+
+\clearpage
+
+\subsection{Packet encryption overhead}
+\label{subsec:packet-encryption-overhead}
+This section outlines QUIC encryption process and compares its performance with SRTP encryption process.
+I chose SRTP to compare QUIC with as it is used for carrying multimedia data and it includes similar data in its
+header as QUIC does.
+Similar performance of encryption process in both protocols is promising and allows for further research in topic
+whether RTP can be replaced by QUIC in some scenarios.
+Such a replacement can significantly reduce complexity of already existing systems and standards which I am describing
+more in section~\ref{subsec:webrtc-over-quic}.
+
+\subsubsection{QUIC payload encryption}
+Payload is encrypted using AEAD algorithm.
+All cipher-suites used in TLS 1.3 are allowed in QUIC except \textit{AES\_128\_CCM\_8}.
+Therefore we have \textit{AES\_128\_GCM}, \textit{AES\_256\_GCM}, \textit{CHACHA20\_POLY1305} and \textit{AES\_128\_CCM}.
+Figure~\ref{fig:payload_enc} shows the process of payload encryption.
+As a plain text we pass payload and as an associated data we pass plain header.
+As a result we get a ciphertext and an authentication tag.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}
+        \node (aead) [rectangle, draw=black, minimum width=2cm,minimum height=2cm] {AEAD};
+        \node (aead in 0) [rectangle, minimum width=1cm,minimum height=1cm, above left=of aead.south east] {};
+        \node (aead in 1) [rectangle, minimum width=1cm,minimum height=1cm, below left=of aead.north east] {};
+        \node (payload) [left=3cm of aead in 0] {payload}
+        edge [->] node[align=center,above] {plain text} (aead in 0);
+        \node (header) [left=3cm of aead in 1] {header}
+        edge [->] node[align=center,above] {associated data} (aead in 1);
+        \node (cipher text) [align=center, right=3cm of aead] {cipher text + \\ authentication tag}
+        edge [<-] node[align=center, above] {output} (aead);
+    \end{tikzpicture}
+    \caption{QUIC payload encryption scheme}
+    \label{fig:payload_enc}
+\end{figure}
+
+\subsubsection{QUIC header encryption}
+Figure~\ref{fig:header_enc} shows the process of header encryption.
+The first step is to get \textit{sample} from encrypted payload.
+In most cases a sample is 16 bytes long and it is taken starting from $4 - pn\_len$ byte of encrypted payload.
+In the next step the sample is encrypted and its first 5 bytes are taken as mask.
+At the end we perform XOR operation on predefined header fields and mask.
+As a result we get header with some fields being encrypted.
+Algorithm used to encrypt sample depends on negotiated cipher-suite.
+For example, if payload is encrypted with AES\_128\_GCM then sample will be encrypted using AES\_128\_ECB\@.
+
+\begin{figure}[h]
+    \centering
+    \tikzset{XOR/.style={draw,circle, minimum width=1cm, minimum height=1cm, append after command={
+    [shorten >=\pgflinewidth, shorten <=\pgflinewidth,]
+    (\tikzlastnode.north) edge (\tikzlastnode.south)
+    (\tikzlastnode.east) edge (\tikzlastnode.west)}}}
+    \begin{tikzpicture}
+        \node (xor) [XOR, scale=1.2] {};
+        \node (encrypted header) [right=of xor] {encrypted header}
+        edge [<-] node[align=center,above] {} (xor);
+        \node (mask) [below left=of xor] {mask}
+        edge [->, to path={-| (\tikztotarget)}] (xor.south);
+        \node (sample) [left=of mask] {sample}
+        edge [->] (mask);
+        \node (payload) [left=of sample] {payload}
+        edge [->] (sample);
+        \node (header)  at (payload |- xor) {header}
+        edge [->] (xor);
+    \end{tikzpicture}
+    \caption{QUIC header encryption scheme}
+    \label{fig:header_enc}
+\end{figure}
+
+\subsubsection{RTP packet encryption}
+Encryption of RTP packets is specified by extension to RTP protocol called SRTP (RFC 3711~\cite{rfc3711}).
+SRTP protects only RTP payload and leaves RTP header unencrypted.
+SRTP uses AES cipher in two modes f8-mode or Counter Mode.
+The following tests compares the performance of both encryption mechanisms using AES\_128\_GCM\@.
+
+\subsubsection{Tests}
+\label{subsubsec:tests}
+Following tests are split into two scenarios.
+
+In the first one I am comparing time needed for encrypting constant length QUIC header (22 bytes) and variable length QUIC payload.
+QUIC payload encapsulates RTP packet.
+Therefore it consists of constant length flow identifier (1 byte), constant length RTP header (12 bytes) and variable length RTP payload (from 100 to 1200 bytes).
+
+In the second scenario I am comparing time needed for encrypting standalone variable length RTP payload (from 100 to 1200 bytes)
+and whole QUIC packet which consists of constant length QUIC header (22 bytes) and variable length QUIC payload.
+QUIC payload has the same format as in the first test scenario.
+Whole QUIC packet size can be obtained from the equation~\ref{eq:quic-packet-size}.
+\begin{align}
+    \begin{split}
+        QUIC\_packet\_size & = RTP\_payload\_size + RTP\_header\_size \\
+        & \quad + tag\_identifier + QUIC\_header\_size \\
+        & = RTP\_payload\_size + 12 + 1 + 22 \\
+        & = RTP\_payload\_size + 35
+    \end{split}
+    \label{eq:quic-packet-size}
+\end{align}
+
+In both test scenarios, encryption process was performed concurrently.
+
+\subsubsection{Environment}
+Test environment:
+\begin{itemize}
+    \item processor: Intel(R) Core(TM) i5-9600K CPU @ 3.70GHz, 6 Cores, 9 MB Cache
+    \item memory: 16 GB RAM
+    \item operating system: Linux
+    \item library: ring 0.16.20
+    \item language: Rust
+    \item cipher-suite: AES\_128\_GCM
+\end{itemize}
+
+\subsubsection{Methodology}
+For each RTP payload size following steps were performed:
+\begin{itemize}
+    \item collect 100 samples
+    \item detect and remove outliers
+    \item count average from remaining samples
+\end{itemize}
+
+\subsubsection{Results}
+Figure~\ref{fig:header-payload-enc} presents time comparison between header and payload encryption process.
+We can see that QUIC payload encryption time is between 220 and 450 ns.
+For 400, 800 and 1200 RTP payload sizes we can observe shorter encryption time than for previous sizes.
+This is probably because of concurrent execution of encryption process.
+The data can be split across threads in a manner that allocates additional thread for 400, 800 and 1200 bytes.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[xlabel={RTP payload size (bytes)},
+        ylabel={Average time (ns)},
+        legend style={legend pos=outer north east}]
+            \addplot table[x=size,y=time] {data/quic-header-enc.table};
+            \addlegendentry{Header encryption time}
+            \addplot table[x=size,y=time] {data/quic-payload-enc.table};
+            \addlegendentry{Payload encryption time}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{QUIC header vs QUIC payload encryption time}
+    \label{fig:header-payload-enc}
+\end{figure}
+
+Figure~\ref{fig:rtp-payload-quic-packet-enc} presents time comparison between RTP payload and QUIC packet (with RTP packet inside) encryption process.
+As in the first test scenario, for 400, 800 and 1200 RTP payload sizes we can observe shorter encryption time than for previous sizes.
+Encryption of QUIC packet that encapsulates RTP packet is slower by 30--50ns comparing to standalone RTP payload encryption.
+This is illustrated in figure~\ref{fig:rtp-payload-quic-packet-enc}.
+
+\begin{figure}[!h]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[xlabel={RTP payload size (bytes)},
+        ylabel={Average time (ns)},
+        legend style={legend pos=outer north east}]
+            \addplot table[x=size,y=time] {data/quic-packet-enc.table};
+            \addlegendentry{QUIC packet encryption time}
+            \addplot table[x=size,y=time] {data/rtp-payload-enc.table};
+            \addlegendentry{RTP payload encryption time}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{RTP payload vs QUIC packet (with RTP packet inside) encryption time}
+    \label{fig:rtp-payload-quic-packet-enc}
+\end{figure}
+
+In summary, QUIC header encryption does not introduce a significant overhead for the entire QUIC packet encryption process.
+Also, encryption of encapsulated RTP packet into QUIC packet is insignificantly slower than encryption of standalone RTP payload.
+
+\clearpage
+
+\subsection{Partial reliability}
+\label{subsec:partial-reliability}
+QUIC is by default a reliable protocol.
+However there are plenty of situations where transmission speed is more important than reliability, especially in real-time communication.
+\textit{An Unreliable Datagram Extension to QUIC}~\cite{ietf-quic-datagram-02} introduces a new QUIC frame called DATAGRAM which carry data unreliably.
+
+DATAGRAM frames are not retransmitted.
+They are sent alongside the STREAM frames so they use the same cryptographic context but they do not affect flow-control limits.
+Each DATAGRAM frame is acknowledged so it is possible to provide application with information about packet loss.
+It is also important that DATAGRAM frames are subject to QUIC congestion control mechanism which allows applications to avoid implementing their own.
+
+Two experiments have been performed to validate DATAGRAM frames behavior as well as their ease of use.
+They are presented in the following sections.
+
+\subsubsection{QUIC flow control}
+\label{subsubsec:quic-flow-control}
+As stated in section~\ref{subsec:flow-control-and-congestion-control} there are two levels of flow control in QUIC -- stream level and connection level.
+Initial limits are set by the receiver in transport parameters during QUIC handshake.
+Subsequent updates are done by sending \\ \textit{MAX\_STREAM\_DATA} or \textit{MAX\_DATA} frames.
+It is implementation choice when and how much increase the limit.
+Frequently sending frames with small updates will result in increased bandwidth usage.
+On the other hand, less frequent but larger updates require more resources at the receiver.
+Sender must not exceed limits set by the receiver.
+If sender is blocked in transmitting data it should send \textit{STREAM\_DATA\_BLOCKED} or \textit{DATA\_BLOCKED} frames.
+Flow control mechanism is described in details in section 4, RFC 9000~\cite{rfc9000}.
+
+DATAGRAM frames are not subject to QUIC flow control mechanism.
+This can be useful especially in scenarios where we are sending both reliable and unreliable data.
+If reliable data are not crucial (e.g.\ uploading or downloading a file from a chat) its transmission can be limited in favour of unreliable data (e.g.\ voice or video).
+
+\subsubsection{QUIC loss detection}
+\label{subsubsec:loss-detection}
+From RFC 9002 (Section 6.1), a packet is declared lost if it meets all of the following conditions:
+\begin{itemize}
+    \item The packet is unacknowledged, in flight, and was sent prior to an acknowledged packet.
+    \item The packet was sent kPacketThreshold packets before an acknowledged packet (Section 6.1.1), or it was sent long enough in the past (Section 6.1.2)~\cite{rfc9002}.
+\end{itemize}
+
+To consider packet is lost there has to be some other packet that was sent later and has already been acknowledged.
+
+To this end QUIC introduces a Probe Timeout (PTO).
+The Probe Timeout (PTO) triggers the sending of one or two probe datagrams when ack-eliciting packets are not acknowledged within the expected period of time or the server may not have validated the client's address.
+The PTO enables a connection to recover from loss of tail packets or acknowledgments~\cite{rfc9002} (RFC 9002, Section 6.2).
+
+Expiration of PTO timer does not indicate the packet was lost.
+It only provides one of the requirements necessary to consider the packet as lost -- the packet was sent prior to an acknowledged packet.
+PTO timer is reset each time a new ack-eliciting packet was sent or received.
+
+\subsubsection{Tests}
+\label{subsubsec:tests2}
+Following tests are split into two scenarios.
+
+In the first one I am presenting behaviour of DATAGRAM frames in case of reaching flow control limits on any of streams used in the connection.
+In this scenario client opens two bidirectional streams while the server sets flow control limit on each of them to 1000B\@.
+In each iteration client tries to send 10 reliable and 10 unreliable messages of size 800B each.
+
+In the second one I am testing if acknowledgments of DATAGRAM frames can introduce a significant overhead to the bandwidth usage.
+In this scenario client machine had configured a packet loss from 0\% to 30\% for all UDP datagrams which destination port was equal to 4433.
+Packet loss was set using Linux TC software.
+For each packet loss (0\%, 10\%, 30\%) client was trying to send 1000 messages of 500B size each.
+Server responsibility was to respond for each message by returning it back to the client.
+After sending each message client was waiting for the response from the sever specified amount of time.
+
+\subsubsection{Environment}
+\label{subsubsec:test-env}
+Figure~\ref{fig:dgram-test-env} shows test environment used in DATAGRAM frames experiments.
+Both machines are in local network.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance = 6cm]
+        \node (pc a) [anchor=west,align=center,label=below:{Server}] {\includegraphics{cisco_icons/workstation.eps}}
+        ;
+        \node (pc b) [right=of pc a,align=center,label=below:{Client}] {\includegraphics{cisco_icons/workstation.eps}}
+        edge [<->] node {} (pc a);
+    \end{tikzpicture}
+    \caption{DATAGRAM frames test environment}
+    \label{fig:dgram-test-env}
+\end{figure}
+
+\subsubsection{Results}
+Figure~\ref{fig:dgram_flow_control} presents results for the first test scenario.
+
+
+\begin{figure}[h]
+    \centering
+    \begin{sequencediagram}
+        \newinst{client}{Client}
+        \newinst[8]{server}{Server}
+        \mess{client}{crypto,initial: 1}{server}
+        \mess{server}{initial: 0,ack 1, crypto}{client}
+        \mess{server}{handshake: 0,crypto}{client}
+        \mess{server}{handshake: 1,crypto}{client}
+        \mess{client}{ack 0,initial: 2}{server}
+        \mess{client}{crypto,ack 0--1,handshake: 0}{server}
+        \mess{client}{dgram,stream 0 blocked,stream 4 blocked, 1RTT: 0}{server}
+        \mess{client}{stream 0,1RTT: 1}{server}
+        \mess{client}{datagram,1RTT: 2}{server}
+        \mess{client}{stream 4,1RTT: 3}{server}
+        \mess{client}{datagram,1RTT: 4}{server}
+        \mess{client}{datagram,1RTT: 5}{server}
+        \mess{client}{datagram,1RTT: 6}{server}
+    \end{sequencediagram}
+    \caption{DATAGRAM flow control test -- sequence diagram}
+    \label{fig:dgram_flow_control}
+\end{figure}
+
+
+%\begin{figure}
+%    \centering
+%    \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control.png}
+%    \caption{DATAGRAM flow control test -- sequence diagram}
+%    \label{fig:dgram_flow_control}
+%\end{figure}
+
+After establishing the connection client starts sending data.
+It sends two 1-RTT packets with STREAM frames (packets 1 and 3) and reaches flow control limit.
+However, he is still able to send packets with DATAGRAM frames (packets 4, 5, 6).
+
+%Figure~\ref{fig:dgram_flow_control2} shows this behavior from different perspective.
+%\begin{figure}
+%    \centering
+%    \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_flow_control_2.png}
+%    \caption{DATAGRAM flow control test -- limits}
+%    \label{fig:dgram_flow_control2}
+%\end{figure}
+%Pink line indicates sum of stream flow control limit whereas blue bars represent data sent.
+%We can see that despite the fact flow control limit is less than 5kB we send much more data -- over 45kB\@.
+
+Table~\ref{tab:dgram_packet_loss} illustrates results for the second test scenario.
+
+\begin{table}[h]
+    \centering
+    \resizebox{\columnwidth}{!}{%
+    \begin{tabular}{|c | c | c | c | c | c |}
+        \hline
+        \multicolumn{2}{|c}{\makecell{0\% packet loss}} & \multicolumn{2}{|c}{\makecell{10\% packet loss}} & \multicolumn{2}{|c|}{\makecell{30\% packet loss}} \\
+        \hline
+        \multicolumn{2}{|c}{client} & \multicolumn{2}{|c|}{client} & \multicolumn{2}{|c|}{client} \\
+        \hline
+        packets sent & packets lost & packets sent & packets lost & packets sent & packets lost \\
+        \hline
+        1005         & 0            & 1007         & 89           & 1031         & 318          \\
+        \hline
+    \end{tabular}%
+    }
+    \caption{\label{tab:dgram_packet_loss}Number of packets sent with and without packet loss for DATAGRAM frames.}
+\end{table}
+
+For packet loss set to 0\% client sent 1005 packets.
+None of them were lost.
+5 additional packets comes from handshake establishment.
+In this setup QUIC didn't send any additional packets acknowledging DATAGRAM frames.
+
+For packet loss set to 10\% client sent 1007 packets, 89 of which were lost.
+We can see that in this configuration client sent 2 packets more than previously.
+This is because server sends its data as last and client need to acknowledge this data by sending additional packet with ACK frame.
+
+For packet loss set to 30\% client sent 1031 packets, 318 of which were lost.
+This time we can observe that client sent 20--30 packets more than in the first two scenarios.
+It's because of PING frames that are being sent when PTO timer expires.
+Figure~\ref{fig:dgram_ping_frames} illustrates this situation.
+
+\begin{figure}[h]
+    \centering
+    \begin{sequencediagram}
+        \newinst{client}{Client}
+        \newinst[8]{server}{Server}
+        \mess{client}{datagram,ack 27,1RTT: 36}{server}
+        \mess{server}{1RTT: 28,ack 36, datagram}{client}
+        \mess{client}{datagram,ack 28,1RTT: 37}{server}
+        \mess{server}{1RTT: 29,ack 36, ping}{client}
+        \mess{client}{datagram,ack 28--29,1RTT: 38}{server}
+        \mess{client}{ping,ack 28--29,1RTT: 39}{server}
+    \end{sequencediagram}
+    \caption{Additional PING frames after server or client inactivity}
+    \label{fig:dgram_ping_frames}
+\end{figure}
+
+%\begin{figure}
+%    \centering
+%    \includegraphics[width=\textwidth]{img/__09__datagrams/dgram_retransmission_ping.png}
+%    \caption{Additional PING frames after server or client inactivity}
+%    \label{fig:dgram_ping_frames}
+%\end{figure}
+
+Server in its 28th 1RTT packet sent datagram frame in response to client's earlier packet and set its PTO timer.
+Client received server's packet, generated a response and set its own timer.
+The response was lost so that server's PTO timer expired which resulted in 29th 1RTT packet from server to client with PING frame.
+After receiving it client generated a response, reset its PTO timer and sent the response but this time it was also lost.
+After 21 ms client's PTO timer expired so client sent a new ack-eliciting packet with PING frame.
+
+In summary, a small overhead related to acknowledging DATAGRAM frames was observed for network environment with a very
+high packet loss (30\%).
+In other scenarios -- when there was no packet loss or packet loss was equal to 10\% acknowledging DATAGRAM frames
+did not introduce any overhead to the connection bandwidth.
+
+\clearpage
+
+\subsection{Video over QUIC}
+\label{subsec:video}
+This section outlines \textit{video\_quic} application which I developed to observer how QUIC behave when used for
+sending multimedia data.
+\textit{video\_quic} sends H264 encoded video from a client to a server.
+It is written in Elixir and uses Membrane Framework and quicer library.
+%Membrane Framework is a framework for processing multimedia in Elixir while quic is a library that
+%brings QUIC to the Elixir World.
+%quic is a wrapper around another library called msquic.
+%Both in Elixir and Erlang there is a possibility to define function and implement its body in C language.
+%quic uses this feature to define QUIC API in Erlang and provide implementation in C.
+%This implementation just calls functions from msquic which is an actual implementation of QUIC written in C.
+
+\subsubsection{quicer}
+quicer is a library written in Erlang which brings QUIC to the Erlang ecosystem.
+It provides NIF bindings for another library called msquic which is actual implementation of QUIC written in C\@.
+NIF stands for Native Implemented Function and it allows for combining C and Erlang code.
+NIFs are functions declared in Erlang but their implementations are provided in C\@.
+They are called in the same way as any other Erlang functions.
+%To serialize and deserialize arguments between Erlang and C code \textit{erl\_nif} library has to be used.
+quicer can be thought as a wrapper around actual QUIC implementation.
+Even though at the moment of writing this thesis quicer lacked support for DATAGRAM frames.
+To implement video\_quic I had to add support for DATAGRAMS in quicer by wrapping proper functions from msquic.
+Those changes are available publicly on GitHub\footnote{\url{https://github.com/emqx/quic/pull/57}}.
+
+\subsubsection{Membrane Framework}
+Membrane Framework is a framework for processing multimedia in Elixir.
+The most elementary entity in Membrane is an element.
+There are four types of elements.
+\begin{description}
+    \item [Source] - elements of type source are responsible for reading data from a disk or network and passing them to
+    other Membrane elements.
+    \item [Filter] - it receives data from other Membrane elements (sources and filters), processes this data and passes
+    modified (or the same) data to next Membrane elements
+    \item [Sink] - elements of this type are something opposite to sources.
+    They receive data from other Membrane elements and save it to a file or send it through a network.
+    \item [Bin] - it is used only for logical purposes particularly it is used for grouping multiple Membrane elements into one.
+    Bin does not modify, read or send data.
+\end{description}
+Membrane elements are linked together into Pipelines.
+Pipeline can be thought as a unidirectional flow of data.
+
+Figure~\ref{fig:example-membrane-pipeline} presents a very simple Membrane pipeline that is responsible for reading
+MP3 audio file and playing it in headphones.
+In this example there is the MP3 File Reader which reads data and passes it to the MP3 Decoder.
+MP3 Decoder decodes each chunk of data and passes it to the Converter.
+Converter prepares each chunk of audio for playing it and passes it to PortAudio which then plays it in headphones.
+\begin{figure}[h]
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=2cm,minimum height=2cm,draw=black]
+    \scalebox{0.9}{%
+    \begin{tikzpicture}
+        \node[label=below:{MP3 audio file}](file){
+        \begin{tikzpicture}
+            \draw (0,0) -- (0,1.2) -- (0.7,1.2) -- (0.7,0.8) -- (1,0.8) -- (1,0) -- cycle;
+            \draw (0.7,1.2) -- (1,0.8);
+            \foreach \y in {0.2,0.4,0.6}{
+            \draw (0.2,\y) -- (0.8,\y);
+            \draw (0.2,0.8) -- (0.6,0.8);
+            \draw (0.2,1) -- (0.6,1);
+            }
+        \end{tikzpicture}
+        };
+        \node[rect,fill=cyan!30,right=of file,align=center] (file-src) {MP3 File \\ Reader \\ (Source)}
+        edge [<-] node[align=center,right] {} (file);
+        \node[rect,fill=purple!30,right=of file-src,align=center] (mp3-decoder) {MP3 \\ Decoder \\ (Filter)}
+        edge [<-] node[align=center,right] {} (file-src);
+        \node[rect,fill=purple!30,right=of mp3-decoder,align=center] (converter) {Converter \\ (Filter)}
+        edge [<-] node[align=center,right] {} (mp3-decoder);
+        \node[rect,fill=green!30,right=of converter,align=center] (port-audio) {PortAudio \\ (Sink)}
+        edge [<-] node[align=center,right] {} (converter);
+    \end{tikzpicture}%
+    }
+    \caption{Example Membrane Pipeline}
+    \label{fig:example-membrane-pipeline}
+\end{figure}
+
+To use Membrane I implemented two new Membrane elements -- QUIC Sink and QUIC Source.
+They are also available publicly on GitHub\footnote{\url{https://github.com/mickel8/membrane_quic_plugin}}.
+Both of them use quicer -- QUIC Source for sending data and QUIC Sink for receiving data through the network.
+
+\subsubsection{Architecture}
+\label{subsubsec:architecture}
+
+Figure~\ref{fig:video-app-architecture} illustrates architecture of video quic application.
+It consists of two pipelines.
+Client pipeline is responsible for reading data from a file and sending it through the network while the server one is
+listening on a connection and after receiving any data it decodes this data and play it using SDL player.
+Architecture of both pipelines is presented in figure~\ref{fig:pipelines}.
+
+\begin{figure}[h]
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=2cm,minimum height=2cm,draw=black]
+    \begin{tikzpicture}
+        \node[label=below:{H264 video file}](file){
+        \begin{tikzpicture}
+            \draw (0,0) -- (0,1.2) -- (0.7,1.2) -- (0.7,0.8) -- (1,0.8) -- (1,0) -- cycle;
+            \draw (0.7,1.2) -- (1,0.8);
+            \foreach \y in {0.2,0.4,0.6}{
+            \draw (0.2,\y) -- (0.8,\y);
+            \draw (0.2,0.8) -- (0.6,0.8);
+            \draw (0.2,1) -- (0.6,1);
+            }
+        \end{tikzpicture}
+        };
+        \node[rect,right=of file,align=center] (server-pipeline) {Client \\ side \\ pipeline}
+        edge [<-] node[align=center] {} (file);
+        \node[label=center:Internet,right=of file-src] (internet) {\includegraphics{cisco_icons/cloud.eps}}
+        edge [<-] node[align=center] {} (server-pipeline);
+        \node[rect,right=of internet,align=center] (client-pipeline) {Server \\ side \\ pipeline}
+        edge [<-] node[align=center] {} (internet);
+    \end{tikzpicture}
+    \caption{Architecture of video quic application}
+    \label{fig:video-app-architecture}
+\end{figure}
+
+\begin{figure}[h]
+    \tikzstyle{rect}=[rectangle,minimum width=2cm,minimum height=2cm,draw=black]
+    \subfloat[Client side pipeline]{
+    \begin{tikzpicture}
+        \node[rect,align=center,fill=cyan!30] (file-src) {File \\ Source};
+        \node[rect,right=of file-src,align=center,fill=purple!30] (video-parser) {Video \\ Parser}
+        edge [<-] node[align=center,right] {} (file-src);
+        \node[rect,right=of video-parser,align=center,fill=purple!60] (rtp-session-bin) {RTP \\ Session \\ Bin}
+        edge [<-] node[align=center,right] {} (video-parser);
+        \node[rect,right=of rtp-session-bin,fill=purple!30] (realtimer) {Realtimer}
+        edge [<-] node[align=center,right] {} (rtp-session-bin);
+        \node[rect,right=of realtimer,align=center,fill=green!30] (quic-sink) {Quic \\ Client}
+        edge [<-] node[align=center,right] {} (realtimer);
+    \end{tikzpicture}
+    } \\
+    \subfloat[Server side pipeline]{
+    \begin{tikzpicture}
+        \node[rect,below left=of internet,align=center,fill=cyan!30] (quic-src) {Quic \\ Server};
+        \node[rect,right=of quic-src,align=center,fill=purple!60] (rtp-session-bin-2) {RTP \\ Session \\ Bin}
+        edge [<-] node[align=center,right] {} (quic-src);
+        \node[rect,right=of rtp-session-bin-2,align=center,fill=purple!30] (video-parser-2) {Video \\ Parser}
+        edge [<-] node[align=center,right] {} (rtp-session-bin-2);
+        \node[rect,right=of video-parser-2,align=center,fill=purple!30] (video-decoder) {Video \\ Decoder}
+        edge [<-] node[align=center,right] {} (video-parser-2);
+        \node[rect,right=of video-decoder,align=center,fill=green!30] (sdl-player) {SDL \\ player}
+        edge [<-] node[align=center,right] {} (video-decoder);
+    \end{tikzpicture}
+    }
+    \caption{Architecture of video quic pipelines}
+    \label{fig:pipelines}
+\end{figure}
+
+
+%\begin{figure}
+%    \centering
+%    \tikzstyle{rect}=[rectangle,minimum width=4cm,minimum height=1cm,draw=black]
+%    \scalebox{.75}{%
+%    \begin{tikzpicture}
+%        \node[label=below:{H264 video file}](file){
+%        \begin{tikzpicture}
+%            \draw (0,0) -- (0,1.2) -- (0.7,1.2) -- (0.7,0.8) -- (1,0.8) -- (1,0) -- cycle;
+%            \draw (0.7,1.2) -- (1,0.8);
+%            \foreach \y in {0.2,0.4,0.6}{
+%            \draw (0.2,\y) -- (0.8,\y);
+%            \draw (0.2,0.8) -- (0.6,0.8);
+%            \draw (0.2,1) -- (0.6,1);
+%            }
+%        \end{tikzpicture}
+%        };
+%        \node[rect,below=of file] (file-src) {File Source}
+%        edge [<-] node[align=center,right] {} (file);
+%        \node[rect,below=of file-src] (video-parser) {Video Parser}
+%        edge [<-] node[align=center,right] {} (file-src);
+%        \node[rect,below=of video-parser] (rtp-session-bin) {RTP Session Bin}
+%        edge [<-] node[align=center,right] {} (video-parser);
+%        \node[rect,below=of rtp-session-bin] (realtimer) {Realtimer}
+%        edge [<-] node[align=center,right] {} (rtp-session-bin);
+%        \node[rect,below=of realtimer] (quic-sink) {Quic Sink}
+%        edge [<-] node[align=center,right] {} (realtimer);
+%        \node[below=of quic-sink, label=center:Internet] (internet) {\includegraphics{cisco_icons/cloud.eps}}
+%        edge [<-] node[align=center,right] {} (quic-sink);
+%        \node[rect,below=of internet] (quic-src) {Quic Source}
+%        edge [<-] node[align=center,right] {} (internet);
+%        \node[rect,below=of quic-src] (rtp-session-bin-2) {RTP Session Bin}
+%        edge [<-] node[align=center,right] {} (quic-src);
+%        \node[rect,below=of rtp-session-bin-2] (video-parser-2) {Video Parser}
+%        edge [<-] node[align=center,right] {} (rtp-session-bin-2);
+%        \node[rect,below=of video-parser-2] (video-decoder) {Video Decoder}
+%        edge [<-] node[align=center,right] {} (video-parser-2);
+%        \node[rect,below=of video-decoder] (sdl-player) {SDL player}
+%        edge [<-] node[align=center,right] {} (video-decoder);
+%
+%        \node[rect,dashed,minimum width=12cm,fit=(file)(quic-sink)] (server-side) {};
+%        \node[rect,dashed,minimum width=12cm,fit=(quic-src)(sdl-player)] (client-side) {};
+%        \node[align=center,right] at (server-side.west) {\large server side \\ \large pipeline};
+%        \node[align=center,right] at (client-side.west) {\large client side \\ \large pipeline};
+%    \end{tikzpicture}%
+%    }
+%    \caption{Architecture of video quic application}
+%    \label{fig:video-app-architecture}
+%\end{figure}
+
+\FloatBarrier
+
+\subsubsection{Tests}
+In tests I was sending H264 encoded video file from a client to a server with packet loss for client's outgoing packets
+set to 0\%, 5\%, 10\% and 30\%.
+Both client and server were on the same machine.
+Packet loss was set using Linux traffic control tool.
+
+\subsubsection{Results}
+Results of my experiment are shown in table ~\ref{tab:video-quic-table}.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{ c | c | c }
+        packet loss & packets sent & bytes sent \\
+        \hline
+        0\%         & 322          & 166572     \\
+        5\%         & 322          & 166507     \\
+        10\%        & 323          & 167744     \\
+        30\%        & 324          & 168772     \\
+    \end{tabular}
+    \caption{\label{tab:video-quic-table}Number of packets sent with and without packet loss in video\_quic application.}
+\end{table}
+For 5\% packet loss I didn't notice any additional data being sent by a client.
+For 10\% packet loss client sent about 1kB data more and for 30\% packet loss client sent about 2kB more data but
+QUIC packets number remained almost the same.
+This shows that for very high packet loss overhead related to congestion control and acknowledging DATAGRAM frames
+may be equal more than 1\% of data that is being sent.
+
+To sum up an overhead appears only when packet loss is very high.
+On the other hand QUIC provides pluggable congestion control mechanism and statistics about lost packets.
+
+\clearpage
+
+\subsection{WebRTC over QUIC}
+\label{subsec:webrtc-over-quic}
+Previous sections show that QUIC encryption mechanism as well as DATAGRAM frames introduce an insignificant overhead
+or do not introduce any overhead at all to the connection bandwidth or transmission delay.
+\textit{video\_quic} application provides promising results in terms of transmitting media over QUIC\@.
+In this section I am describing how QUIC can be adopted to WebRTC which is a state-of-the-art standard
+used in videoconferencing systems.
+
+\subsubsection{WebRTC overview}
+\label{subsubsec:webrtc-overview}
+WebRTC is a standard that enables peer to peer (P2P) multimedia connections in web browsers when both peers are behind NATs without using any plugins.
+It is natively implemented by all major browsers.
+In WebRTC there are two planes -- media plane and signaling plane.
+The former is responsible for relaying both media data (audio, video) and non-media data (chat messages, uploading and downloading files, etc.).
+The later is responsible for negotiating session parameters like audio and video codecs or transport addresses.
+The whole protocol stack is presented in figure~\ref{fig:webrtc-stack}.
+
+\begin{figure}[h]
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=6cm,minimum height=1cm,draw=black,outer sep=0pt]
+    \tikzstyle{base rect}=[rect,minimum width=12cm,outer sep=0pt]
+    \tikzstyle{text rect}=[rectangle,minimum width=6cm,align=center,outer sep=0pt]
+    \tikzstyle{multipart rect}=[rectangle split,rectangle split horizontal,rectangle split parts = 2,inner xsep = 0.0mm,outer sep=0pt,
+    draw=black,align=center,minimum width=6cm,minimum height=1cm]
+    \begin{tikzpicture}
+        % ip
+        \node (IP) [base rect,fill=gray!20] {IP};
+
+        % media plane
+        \node (UDP) [rect,fill=blue!20,above left=0.0cm of IP.north] {UDP};
+        \node (ICE) [rect,fill=purple!20,above=0.0cm of UDP]  {ICE, STUN, TURN} ;
+        \node (DTLS) [rect,fill=orange!20,above=0.0cm of ICE] {DTLS} ;
+        \node (SRTP) [multipart rect,rectangle split part fill={green!20,yellow!20},above=0.0cm of DTLS] {\nodepart[text width=3cm]{one} SRTP \nodepart[text width=3cm]{two} SCTP} ;
+        \node [text rect,above=0.0cm of SRTP]{Media Plane};
+
+        % signaling plane
+        \node (TCP) [rect,fill=blue!20,above right=0.0cm of IP.north]{TCP};
+        \node (TLS) [rect,fill=purple!20,above=0.0cm of TCP] {TLS};
+        \node (HTTP) [rect,fill=orange!20,above=0.0cm of TLS] {HTTP};
+        \node (WS) [rect,fill=green!20,above=0.0cm of HTTP] {WS/Other};
+        \node (SDP) [multipart rect,above=0.0cm of WS,rectangle split part fill={gray!20,yellow!20}] {\nodepart[text width=3cm]{one} SDP \nodepart[text width=3cm]{two} SIP/XMPP/\\Other};
+        \node [text rect,above=0.0cm of SDP]{Signaling Plane};
+    \end{tikzpicture}
+    \caption{WebRTC protocol stack}
+    \label{fig:webrtc-stack}
+\end{figure}
+
+\subsubsection{Media plane}
+\label{subsubsec:media-plane}
+In media plane, media data is carried using RTP protocol which stands for Real-time Transport Protocol.
+RTP protocol provides media packets with information that is not present in headers of UDP datagrams but is important in terms of multimedia transmission.
+This information includes timestamps -- to know when data should be passed to video or audio decoder, sequence numbers -- to perform packets reordering, payload type -- to know which codec is used.
+RTP packets are encrypted using cryptographic context negotiated during DTLS handshake.
+DTLS handshake provides so called keying material which is used by both sides for creating actual keys used for protecting and unprotecting RTP packets.
+Thanks to this we can encrypt only RTP payload (without header) and encapsulate whole RTP packet directly into UDP datagram omitting DTLS record layer.
+Key derivation process as well as encryption and decryption mechanisms are described in SRTP (Secure Real-time Transport Protocol) which is a profile of RTP protocol.
+
+On the other hand, non-media data is carried by SCTP\@.
+Unlike RTP packets, SCTP datagrams are encapsulated in DTLS records.
+
+Besides SRTP and SCTP protocols there are ICE, STUN and TURN\@.
+They are used for establishing a connection between peers even when both of them are behind NATs.
+
+At the end, in most cases everything is carried in UDP datagrams.
+However, in some specific scenarios (e.g.\ when some network blocks UDP traffic or allows only for traffic on port 443) TCP or TLS over TCP has to be used.
+
+\subsubsection{Signaling plane}
+Main protocol used in signaling plane is Session Description Protocol (SDP).
+It defines format of messages that carry information about number of media tracks, their codecs, relationships between them, etc.
+WebRTC does not define how to exchange these messages between peers.
+Instead, it is user (i.e.\ someone using WebRTC API) responsibility.
+In many cases it is done using a separate connection over WebSocket (WS) to a dedicated signaling server.
+Figure~\ref{fig:webrtc-architecture} presents WebRTC architecture.
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[node distance = 4cm]
+        \node (signaling server)[label=below:{Signaling server}] {\includegraphics{cisco_icons/fileserver.eps}};
+
+        \node (pc a) [below left=of signaling server,label=below:{PC A}] {\includegraphics{cisco_icons/workstation.eps}}
+        edge [<->, bend left=45] node[align=center,left] {signaling\\messages} (signaling server);
+        \node (pc a firewall) [right=0.0cm of pc a,label=below:{NAT}] {\includegraphics{cisco_icons/firewall.eps}};
+
+        \node (pc b) [below right=of signaling server,label=below:{PC B}] {\includegraphics{cisco_icons/workstation.eps}}
+        edge [<->, bend right=45] node[align=center,right] {signaling\\messages} (signaling server);
+        \node (pc b firewall) [left=0.0cm of pc b,label=below:{NAT}] {\includegraphics{cisco_icons/firewall.eps}}
+        edge [<->] node[above] {audio/video/non-media data} (pc a firewall);
+
+    \end{tikzpicture}
+    \caption{WebRTC architecture in P2P scenario}
+    \label{fig:webrtc-architecture}
+\end{figure}
+
+\FloatBarrier
+
+\subsubsection{Why media plane uses SRTP instead of plain DTLS records}
+As stated in section~\ref{subsubsec:media-plane}, RTP packets does not use DTLS record layer.
+There are two reasons why.
+First of all SRTP protects only RTP payload.
+Encapsulating RTP packet in DTLS record would encrypt also RTP header which can result in higher overall encryption time.
+The second reason is duplication of data.
+%Figure~\ref{fig:srtp-packet} illustrates format of an SRTP packet.
+%Fields that are specific to SRTP profile are \textit{SRTP MKI (Master Key Identifier)} and \textit{authentication tag}.
+%The rest of fields comes from usual RTP packet.
+%On the other hand figure~\ref{fig:dtls-packet} presents DTLS record.
+DTLS record includes \textit{sequence number} field that is already present in RTP header (they differ only in size)
+and some other fields like \textit{protocol version} or \textit{epoch}.
+Total length of DTLS record header is equal to 104 bits (13 bytes).
+All of this data is redundant in terms of multimedia communication.
+
+%\begin{figure}
+%    \centering
+%    \begin{bytefield}[bitwidth=0.8em]{32}
+%        \bitheader{0-31} \\
+%        \begin{rightwordgroup}{\tiny Authenticated \\ \tiny Portion}
+%            \bitbox{2}{\tiny V=2} & \bitbox{1}{\tiny P} & \bitbox{1}{\tiny X}
+%            & \bitbox{4}{\tiny CC} & \bitbox{1}{\tiny M} & \bitbox{7}{\tiny PT}
+%            & \bitbox{16}{\tiny sequence number} \\
+%            \bitbox{32}{\tiny timestamp} \\
+%            \bitbox{32}{\tiny synchronization source (SSRC) identifier} \\
+%            \begin{leftwordgroup}{\tiny 0 to 15 \\ \tiny items}
+%                \wordbox[tlr]{1}{\tiny contributing source (CSRC) identifiers} \\
+%                \wordbox[blr]{1}{\tiny $\cdots$}
+%            \end{leftwordgroup} \\
+%            \begin{leftwordgroup}{\tiny Optional \\ \tiny RTP \\ \tiny extensions}
+%                \bitbox{16}{\tiny defined by profile} & \bitbox{16}{\tiny length} \\
+%                \wordbox[tlr]{1}{\tiny header extension} \\
+%                \wordbox[blr]{1}{\tiny $\cdots$}
+%            \end{leftwordgroup} \\
+%            \begin{leftwordgroup}{\tiny Encrypted \\ \tiny Portion}
+%                \wordbox[tlr]{2}{\tiny payload} \\
+%                \bitbox[blr]{16}{} & \bitbox{8}{\tiny RTP padding} & \bitbox{8}{\tiny RTP pad count}
+%            \end{leftwordgroup}
+%        \end{rightwordgroup} \\
+%        \wordbox{1}{\tiny SRTP MKI (OPTIONAL)} \\
+%        \wordbox{1}{\tiny authentication tag (RECOMMENDED)}
+%    \end{bytefield}
+%    \caption{SRTP packet format}
+%    \label{fig:srtp-packet}
+%\end{figure}
+%
+%\begin{figure}
+%    \centering
+%    \begin{bytefield}{32}
+%        \bitheader{0-31} \\
+%        \bitbox{8}{\tiny type} & \bitbox{16}{\tiny version} & \bitbox{8}{\tiny epoch} \\
+%        \bitbox{8}{\tiny epoch} & \bitbox{24}{\tiny sequence number} \\
+%        \bitbox{24}{\tiny sequence number} & \bitbox{8}{\tiny length} \\
+%        \bitbox{8}{\tiny length} & \bitbox{24}{\tiny fragment} \\
+%        \wordbox{1}{\tiny fragment}
+%    \end{bytefield}
+%    \caption{DTLS packet format}
+%    \label{fig:dtls-packet}
+%\end{figure}
+
+\subsubsection{RTP encapsulation in QUIC}
+\label{subsubsec:rtp-encapsulation-in-quic}
+RTP packets should be sent unreliably.
+In real-time communication, in most cases there is no time for retransmitting lost packets.
+Such operation could result in higher jitter and re-buffering rate.
+Therefore RTP packets must be encapsulated into DATAGRAM frames.
+RTP over QUIC~\cite{engelbart-rtp-over-quic-00} proposes encapsulation presented in figure~\ref{fig:rtp-encapsulation-into-quic-packet}.
+
+\begin{figure}[h]
+    \centering
+    \begin{bytefield}[bitwidth=3.5em]{6}
+        \wordbox{1}{short header} \\
+        \begin{leftwordgroup}{DATAGRAM \\ frame}
+            \wordbox{1}{length(i) (OPTIONAL)} \\
+            \wordbox{1}{flow identifier(j)} \\
+            \wordbox{1}{RTP packet}
+        \end{leftwordgroup}
+    \end{bytefield}
+    \caption{RTP encapsulation into QUIC packet}
+    \label{fig:rtp-encapsulation-into-quic-packet}
+\end{figure}
+
+There are two drawbacks of proposed solution.
+The first one is duplication of data as \textit{sequence\_number} field is present both in QUIC and RTP headers.
+The second one is that RTP header will be entirely encrypted as a part of QUIC packet payload.
+These caveats are the same as in the case of using DTLS instead of SRTP however, encapsulating RTP in QUIC
+will result in a much simpler protocol stack.
+Comparison of WebRTC protocol stacks is presented in figure ~\ref{fig:webrtc-stack-comparision}.
+
+\begin{figure}[h]
+    \centering
+    \tikzstyle{rect}=[rectangle,minimum width=6cm,minimum height=1cm,draw=black,outer sep=0pt]
+    \tikzstyle{text rect}=[rectangle,minimum width=6cm,align=center,outer sep=0pt]
+    \tikzstyle{multipart rect}=[rectangle split,rectangle split horizontal,rectangle split parts = 2,inner xsep = 0.0mm,outer sep=0pt,
+    draw=black,align=center,minimum width=6cm,minimum height=1cm]
+    \begin{subfigure}[b]{0.4\textwidth}
+        \begin{tikzpicture}
+            % ip
+            \node (IP) [rect,fill=gray!20] {IP};
+
+            % media plane
+            \node (UDP) [rect,fill=blue!20,above=0.0cm of IP] {UDP};
+            \node (ICE) [rect,fill=purple!20,above=0.0cm of UDP]  {ICE, STUN, TURN} ;
+            \node (DTLS) [rect,fill=orange!20,above=0.0cm of ICE] {DTLS} ;
+            \node (SRTP) [multipart rect,rectangle split part fill={green!20,yellow!20},above=0.0cm of DTLS] {\nodepart[text width=3cm]{one} SRTP \nodepart[text width=3cm]{two} SCTP} ;
+        \end{tikzpicture}
+        \caption{WebRTC stack.}
+        \label{fig:webrtc-stack-comparision-standard}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.4\textwidth}
+        \begin{tikzpicture}
+            % ip
+            \node (IP) [rect,fill=gray!20] {IP};
+
+            % media plane
+            \node (UDP) [rect,fill=blue!20,above=0.0cm of IP] {UDP};
+            \node (ICE) [rect,fill=purple!20,above=0.0cm of UDP]  {ICE, STUN, TURN} ;
+            \node (QUIC) [rect,fill=orange!20,above=0.0cm of ICE] {QUIC} ;
+            \node (RTP) [rect,fill=green!20,above=0.0cm of QUIC] {RTP} ;
+        \end{tikzpicture}
+        \caption{WebRTC stack with QUIC.}
+        \label{fig:webrtc-stack-comparision-quic}
+    \end{subfigure}
+    \caption{Comparison of current media plane WebRTC protocol stack and alternative media plane WebRTC protocol stack when using QUIC}
+    \label{fig:webrtc-stack-comparision}
+\end{figure}
+
+\clearpage
+%\subsection{SSH}
+%Secure Shell protocol allows for secure connections to remote machines over insecure network.
+%It defines channels where each channel can be a terminal session, forwarded connections etc. \cite{rfc4254}.
+%Channels are flow controlled.
+%One SSH connection can multiplex multiple SSH channels.
+%SSH uses TCP under the hood which is also flow controlled.
+%Figure \ref{fig:ssh-connection} presents architecture of SSH connection.
+%
+%\begin{figure}[h]
+%    \begin{subfigure}[b]{0.4\textwidth}
+%        \includegraphics[width=\textwidth]{img/__06__current_standards_and_protocols/ssh.pdf}
+%        \caption{SSH connection architecture.}
+%        \label{fig:ssh-connection}
+%    \end{subfigure}
+%    \hfill
+%    \begin{subfigure}[b]{0.4\textwidth}
+%        \includegraphics[width=\textwidth]{img/__06__current_standards_and_protocols/quic_ssh.pdf}
+%        \caption{Alternative SSH connection architecture with QUIC protocol.}
+%        \label{fig:quic-ssh-connection}
+%    \end{subfigure}
+%    \caption{Comparison of current SSH connection architecture and alternative SSH connection architecture using QUIC protocol.}
+%\end{figure}
+%
+%According to \cite{bider-ssh-quic-09}, using QUIC connection we could remove one level of flow control, reduce connection handshakes from two (one for TCP and one for SSH) to one (only for QUIC) and use streams as SSH channels.
+%This approach is presented on a figure \ref{fig:quic-ssh-connection}.
+
+\clearpage

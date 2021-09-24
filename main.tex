@@ -21,8 +21,10 @@
 \usepackage{tgtermes}
 \usepackage{color}
 \usepackage{hyperref}
+\usepackage{sourcecodepro}
 
 \usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows.meta}
 \usetikzlibrary{decorations.text}
 \usetikzlibrary{positioning}
 \usetikzlibrary{fit,shapes}
@@ -36,6 +38,11 @@ urlcolor=black
 }
 
 \lstloadlanguages{TeX}
+\lstset{
+basicstyle=\footnotesize\ttfamily,
+breaklines=true,
+frame=single,
+frameround=tttt}
 
 \definecolor{lightred}{rgb}{1,0.7,0.71}
 
@@ -46,27 +53,24 @@ urlcolor=black
 
     \tableofcontents
     \clearpage
-    \listoffigures
-    \clearpage
-    \listoftables
-    \clearpage
 
     \include{__01__introduction}
     \clearpage
-    \include{__02__state-of-the-art}
+    \include{__02__quic-overview}
     \clearpage
-    \include{__04__quic-overview}
+    \include{__03__state-of-the-art}
     \clearpage
-    \include{__06__quic-in-webrtc}
-    \clearpage
-    \include{__09__datagrams}
+    \include{__04__evaluation}
     \clearpage
     \include{__11__conclusions}
-    \clearpage
-    \include{__12__video}
     \clearpage
 
     \bibliographystyle{plain}
     \bibliography{bibliografia}
+    \clearpage
+    \listoffigures
+    \clearpage
+    \listoftables
+    \clearpage
 
 \end{document}
