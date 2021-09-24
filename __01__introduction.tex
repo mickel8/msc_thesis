@@ -2,10 +2,14 @@
 \label{sec:introduction}
 
 An interactive communication is bidirectional data exchange between people or people and machines.
-The main feature of interactive communication is that the operations performed by a person or machine on the one side determine the operations performed on the other side.
-Examples of interactive communication are controlling remote robots in tele-surgery, doing exercises in tele-rehabilitation or some types of multimedia sessions e.g.\ video conferences.
+It consists of two or more participants and has to be responsive meaning the result of performed action is delivered almost immediately.
+In many cases interactive communication has to be also secure and reliable.
+Examples of interactive communication are controlling remote robot in tele-surgery, doing exercises in tele-rehabilitation and
+some types of multimedia sessions e.g.\ video conference, collaborative work or chat.
+On the other hand to interactive communication does not belong exchanging emails (time between subsequent messages is too big) or
+video on demand and streaming (they are not bidirectional).
 
-Years of testing and improvements have made interactive communication really fast.
+Years of researches, protocol improvements and network devices optimizations have made interactive communication really fast.
 We can talk with another person almost in the real time with a delay of several milliseconds.
 Having said that it is perfectly correct to ask a question whether communication can be even faster, more effective and reliable and whether it is still worth to make improvements while we already have well prospering ecosystem.
 In 2006 Prof.\ Edward Delp said:
@@ -17,23 +21,26 @@ In 2006 Prof.\ Edward Delp said:
 Despite the fact that we are able to achieve very good performance in video conferencing systems there is still much to do.
 Serious gaming, tele-surgery and tele-rehabilitation are all subject to tactile internet in which reliability, security and low latency are fundamental.
 In such cases delay of 1 ms is desirable~\cite{the-tactile-internet}.
-On the other hand, complexity of current standards like WebRTC makes them hard to implement, monitor and maintain.
 
+On the other hand, complexity of current standards makes them hard to implement, monitor and maintain.
+One of them is WebRTC which uses over 10 different protocols and leaves implementation of signalling plane to the user.
 
-QUIC is a new transport protocol standardized in RFC 9000 on May in 2021.
-Its integration with TLS 1.3 significantly reduces connection establishment time while stream multiplexing in a single connection resolves head of line blocking problem of HTTP/2.
-QUIC introduces also special connection identifiers that prevents from additional handshakes in case of network switching and defines own flow control and congestion control mechanisms that are based on TCP ones.
-QUIC packets are encapsulated in UDP datagrams which makes QUIC user level protocol i.e.\ there is no need to modify kernel implementation to provide operating system with support for QUIC\@.
+QUIC is a new transport protocol standardized in RFC 9000 on May in 2021 and provides interesting and promising set of features.
+%Its integration with TLS 1.3 significantly reduces connection establishment time while stream multiplexing in a single connection resolves head of line blocking problem of HTTP/2.
+%QUIC introduces also special connection identifiers that prevents from additional handshakes in case of network switching and defines own flow control and congestion control mechanisms that are based on TCP ones.
+%QUIC packets are encapsulated in UDP datagrams which makes QUIC user level protocol i.e.\ there is no need to modify kernel implementation to provide operating system with support for QUIC\@.
+%
 QUIC is mostly deployed in conjunction with a new version of HTTP called HTTP/3 and is intended to replace TCP and HTTP/2.
-Therefore most publications compare QUIC and HTTP/3 with TCP/TLS and HTTP/2.
-However, it turns out that a lot of QUIC features can be useful in other domains.
-One of them is definitely adaptive streaming.
-As a result a number of IETF drafts emerged to expand QUIC to new areas.
+Therefore most publications are focused on web domain comparing QUIC and HTTP/3 with TCP/TLS and HTTP/2.
 
-This document brings QUIC to one more domain called interactive communication and tries to answer a question whether QUIC can introduce significant improvement in terms of interactive communication.
-To this end, theoretical analysis of QUIC encryption, loss detection and flow control mechanisms as well as number of tests and experiments have been performed.
-In addition, two IETF drafts that are important in terms of interactive communication are discussed -- \textit{An Unreliable Datagram Extension to QUIC} and \textit{RTP over QUIC}.
-The former allows for sending unreliable messages over QUIC while the latter describes encapsulation of RTP into QUIC\@.
+However, it turns out that a lot of QUIC features mainly stream multiplexing, pluggable congestion control, integration with TLS 1.3
+or enhanced connection establishment mechanism can be useful in other domains.
+As a result a number of IETF drafts emerged to expand QUIC to new areas.
+The most important one is \textit{An Unreliable Datagram Extension to QUIC}.
+It allows for combining reliable and unreliable data exchange in the same QUIC connection.
+
+This document tries to answer a question whether QUIC can introduce significant improvement in terms of interactive communication.
+To this end, analysis of QUIC encryption, loss detection and flow control mechanisms as well as number of tests and experiments have been performed.
 
 The structure of this document is as follows.
 Section~\ref{sec:state-of-the-art} presents state of the art and defines problems that will be addressed in this document.
