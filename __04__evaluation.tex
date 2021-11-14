@@ -1,26 +1,28 @@
 %! suppress = EscapeAmpersand
 
 
-\section{Evaluation}
-\label{sec:evaluation}
+\chapter{Evaluation}
+\label{ch:evaluation}
 
 %\subsection{QUIC and HTTP/3}
 %\label{subsec:quic-and-http/3}
 
-\subsection{Hello world application}
-\label{subsec:hellow-world-application}
+\section{Hello world application}
+\label{sec:hellow-world-application}
 QUIC is a user level protocol which means there is no need to recompile operating system kernel to provide it with support
 for QUIC\@.
 The most popular implementations of QUIC at the moment of writing this thesis are those written in Rust and Go.
 However there are plenty of other implementations e.g.\ in C, Java or C++.
 
-\subsubsection{Importing QUIC in a project}
+\subsection{Importing QUIC in a project}
+\label{subsec:importing-quic-in-a-project}
 Importing QUIC in a project depends on used language and is as easy as importing any other dependency.
 In Rust it is done simply by putting \lstinline{"quiche=0.10.0"} in \textit{Cargo.toml}.
 In C user has to compile QUIC library as a static or dynamic one and include it in its \textit{Makefile}, \textit{CMakeLists.txt}
 or any other build tool.
 
-\subsubsection{Libraries architecture}
+\subsection{Libraries architecture}
+\label{subsec:libraries-architecture}
 In my thesis I was mostly using two implementations -- \textit{quiche} which is written in Rust and \textit{lsquic} which is written in C\@.
 The way both libraries work is presented in figure~\ref{fig:quic-implementations-architecture}.
 \begin{figure}
@@ -60,7 +62,8 @@ we can receive some more packets due to not sending acknowledgments in a proper 
 
 \FloatBarrier
 
-\subsubsection{Example usage}
+\subsection{Example usage}
+\label{subsec:example-usage}
 Following listing presents simplified example usage of quiche library.
 It is taken from quiche repository.
 \begin{lstlisting}[label={lst:lstlisting2},caption={Simplified example usage of quiche library.},captionpos=b]
@@ -119,7 +122,8 @@ The second loop is responsible for generating quic packets using \lstinline{conn
 the UDP socket.
 There is also a \textit{for} loop that is responsible for checking if we received any data on any stream
 
-\subsubsection{Summary}
+\subsection{Summary}
+\label{subsec:summary2}
 QUIC libraries can be very easily imported into any environment.
 However some of them like quiche may require from a user more awareness what needs to be done e.g.\
 when to call \lstinline{conn.on_timeout()} or \lstinline{conn.send()} functions.
@@ -128,17 +132,18 @@ other protocols or standards.
 
 \clearpage
 
-\subsection{Packet encryption overhead}
-\label{subsec:packet-encryption-overhead}
+\section{Packet encryption overhead}
+\label{sec:packet-encryption-overhead}
 This section outlines QUIC encryption process and compares its performance with SRTP encryption process.
 I chose SRTP to compare QUIC with as it is used for carrying multimedia data and it includes similar data in its
 header as QUIC does.
 Similar performance of encryption process in both protocols is promising and allows for further research in topic
 whether RTP can be replaced by QUIC in some scenarios.
 Such a replacement can significantly reduce complexity of already existing systems and standards which I am describing
-more in section~\ref{subsec:webrtc-over-quic}.
+more in section~\ref{sec:webrtc-over-quic}.
 
-\subsubsection{QUIC payload encryption}
+\subsection{QUIC payload encryption}
+\label{subsec:quic-payload-encryption}
 Payload is encrypted using AEAD algorithm.
 All cipher-suites used in TLS 1.3 are allowed in QUIC except \textit{AES\_128\_CCM\_8}.
 Therefore we have \textit{AES\_128\_GCM}, \textit{AES\_256\_GCM}, \textit{CHACHA20\_POLY1305} and \textit{AES\_128\_CCM}.
@@ -163,7 +168,8 @@ As a result we get a ciphertext and an authentication tag.
     \label{fig:payload_enc}
 \end{figure}
 
-\subsubsection{QUIC header encryption}
+\subsection{QUIC header encryption}
+\label{subsec:quic-header-encryption}
 Figure~\ref{fig:header_enc} shows the process of header encryption.
 The first step is to get \textit{sample} from encrypted payload.
 In most cases a sample is 16 bytes long and it is taken starting from $4 - pn\_len$ byte of encrypted payload.
@@ -196,14 +202,15 @@ For example, if payload is encrypted with AES\_128\_GCM then sample will be encr
     \label{fig:header_enc}
 \end{figure}
 
-\subsubsection{RTP packet encryption}
+\subsection{RTP packet encryption}
+\label{subsec:rtp-packet-encryption}
 Encryption of RTP packets is specified by extension to RTP protocol called SRTP (RFC 3711~\cite{rfc3711}).
 SRTP protects only RTP payload and leaves RTP header unencrypted.
 SRTP uses AES cipher in two modes f8-mode or Counter Mode.
 The following tests compares the performance of both encryption mechanisms using AES\_128\_GCM\@.
 
-\subsubsection{Tests}
-\label{subsubsec:tests}
+\subsection{Tests}
+\label{subsec:tests3}
 Following tests are split into two scenarios.
 
 In the first one I am comparing time needed for encrypting constant length QUIC header (22 bytes) and variable length QUIC payload.
@@ -226,7 +233,8 @@ Whole QUIC packet size can be obtained from the equation~\ref{eq:quic-packet-siz
 
 In both test scenarios, encryption process was performed concurrently.
 
-\subsubsection{Environment}
+\subsection{Environment}
+\label{subsec:environment}
 Test environment:
 \begin{itemize}
     \item processor: Intel(R) Core(TM) i5-9600K CPU @ 3.70GHz, 6 Cores, 9 MB Cache
@@ -237,7 +245,8 @@ Test environment:
     \item cipher-suite: AES\_128\_GCM
 \end{itemize}
 
-\subsubsection{Methodology}
+\subsection{Methodology}
+\label{subsec:methodology}
 For each RTP payload size following steps were performed:
 \begin{itemize}
     \item collect 100 samples
@@ -245,7 +254,8 @@ For each RTP payload size following steps were performed:
     \item count average from remaining samples
 \end{itemize}
 
-\subsubsection{Results}
+\subsection{Results}
+\label{subsec:results}
 Figure~\ref{fig:header-payload-enc} presents time comparison between header and payload encryption process.
 We can see that QUIC payload encryption time is between 220 and 450 ns.
 For 400, 800 and 1200 RTP payload sizes we can observe shorter encryption time than for previous sizes.
@@ -294,8 +304,8 @@ Also, encryption of encapsulated RTP packet into QUIC packet is insignificantly 
 
 \clearpage
 
-\subsection{Partial reliability}
-\label{subsec:partial-reliability}
+\section{Partial reliability}
+\label{sec:partial-reliability}
 QUIC is by default a reliable protocol.
 However there are plenty of situations where transmission speed is more important than reliability, especially in real-time communication.
 \textit{An Unreliable Datagram Extension to QUIC}~\cite{ietf-quic-datagram-02} introduces a new QUIC frame called DATAGRAM which carry data unreliably.
@@ -308,9 +318,9 @@ It is also important that DATAGRAM frames are subject to QUIC congestion control
 Two experiments have been performed to validate DATAGRAM frames behavior as well as their ease of use.
 They are presented in the following sections.
 
-\subsubsection{QUIC flow control}
-\label{subsubsec:quic-flow-control}
-As stated in section~\ref{subsec:flow-control-and-congestion-control} there are two levels of flow control in QUIC -- stream level and connection level.
+\subsection{QUIC flow control}
+\label{subsec:quic-flow-control}
+As stated in section~\ref{sec:flow-control-and-congestion-control} there are two levels of flow control in QUIC -- stream level and connection level.
 Initial limits are set by the receiver in transport parameters during QUIC handshake.
 Subsequent updates are done by sending \\ \textit{MAX\_STREAM\_DATA} or \textit{MAX\_DATA} frames.
 It is implementation choice when and how much increase the limit.
@@ -324,8 +334,8 @@ DATAGRAM frames are not subject to QUIC flow control mechanism.
 This can be useful especially in scenarios where we are sending both reliable and unreliable data.
 If reliable data are not crucial (e.g.\ uploading or downloading a file from a chat) its transmission can be limited in favour of unreliable data (e.g.\ voice or video).
 
-\subsubsection{QUIC loss detection}
-\label{subsubsec:loss-detection}
+\subsection{QUIC loss detection}
+\label{subsec:loss-detection}
 From RFC 9002 (Section 6.1), a packet is declared lost if it meets all of the following conditions:
 \begin{itemize}
     \item The packet is unacknowledged, in flight, and was sent prior to an acknowledged packet.
@@ -342,8 +352,8 @@ Expiration of PTO timer does not indicate the packet was lost.
 It only provides one of the requirements necessary to consider the packet as lost -- the packet was sent prior to an acknowledged packet.
 PTO timer is reset each time a new ack-eliciting packet was sent or received.
 
-\subsubsection{Tests}
-\label{subsubsec:tests2}
+\subsection{Tests}
+\label{subsec:tests2}
 Following tests are split into two scenarios.
 
 In the first one I am presenting behaviour of DATAGRAM frames in case of reaching flow control limits on any of streams used in the connection.
@@ -357,8 +367,8 @@ For each packet loss (0\%, 10\%, 30\%) client was trying to send 1000 messages o
 Server responsibility was to respond for each message by returning it back to the client.
 After sending each message client was waiting for the response from the sever specified amount of time.
 
-\subsubsection{Environment}
-\label{subsubsec:test-env}
+\subsection{Environment}
+\label{subsec:test-env}
 Figure~\ref{fig:dgram-test-env} shows test environment used in DATAGRAM frames experiments.
 Both machines are in local network.
 
@@ -374,7 +384,8 @@ Both machines are in local network.
     \label{fig:dgram-test-env}
 \end{figure}
 
-\subsubsection{Results}
+\subsection{Results}
+\label{subsec:results2}
 Figure~\ref{fig:dgram_flow_control} presents results for the first test scenario.
 
 
@@ -493,8 +504,8 @@ did not introduce any overhead to the connection bandwidth.
 
 \clearpage
 
-\subsection{Video over QUIC}
-\label{subsec:video}
+\section{Video over QUIC}
+\label{sec:video}
 This section outlines \textit{video\_quic} application which I developed to observer how QUIC behave when used for
 sending multimedia data.
 \textit{video\_quic} sends H264 encoded video from a client to a server.
@@ -506,7 +517,8 @@ It is written in Elixir and uses Membrane Framework and quicer library.
 %quic uses this feature to define QUIC API in Erlang and provide implementation in C.
 %This implementation just calls functions from msquic which is an actual implementation of QUIC written in C.
 
-\subsubsection{quicer}
+\subsection{quicer}
+\label{subsec:quicer}
 quicer is a library written in Erlang which brings QUIC to the Erlang ecosystem.
 It provides NIF bindings for another library called msquic which is actual implementation of QUIC written in C\@.
 NIF stands for Native Implemented Function and it allows for combining C and Erlang code.
@@ -518,7 +530,8 @@ Even though at the moment of writing this thesis quicer lacked support for DATAG
 To implement video\_quic I had to add support for DATAGRAMS in quicer by wrapping proper functions from msquic.
 Those changes are available publicly on GitHub\footnote{\url{https://github.com/emqx/quic/pull/57}}.
 
-\subsubsection{Membrane Framework}
+\subsection{Membrane Framework}
+\label{subsec:membrane-framework}
 Membrane Framework is a framework for processing multimedia in Elixir.
 The most elementary entity in Membrane is an element.
 There are four types of elements.
@@ -574,8 +587,8 @@ To use Membrane I implemented two new Membrane elements -- QUIC Sink and QUIC So
 They are also available publicly on GitHub\footnote{\url{https://github.com/mickel8/membrane_quic_plugin}}.
 Both of them use quicer -- QUIC Source for sending data and QUIC Sink for receiving data through the network.
 
-\subsubsection{Architecture}
-\label{subsubsec:architecture}
+\subsection{Architecture}
+\label{subsec:architecture}
 
 Figure~\ref{fig:video-app-architecture} illustrates architecture of video quic application.
 It consists of two pipelines.
@@ -693,13 +706,15 @@ Architecture of both pipelines is presented in figure~\ref{fig:pipelines}.
 
 \FloatBarrier
 
-\subsubsection{Tests}
+\subsection{Tests}
+\label{subsec:tests}
 In tests I was sending H264 encoded video file from a client to a server with packet loss for client's outgoing packets
 set to 0\%, 5\%, 10\% and 30\%.
 Both client and server were on the same machine.
 Packet loss was set using Linux traffic control tool.
 
-\subsubsection{Results}
+\subsection{Results}
+\label{subsec:results3}
 Results of my experiment are shown in table ~\ref{tab:video-quic-table}.
 
 \begin{table}[h]
@@ -725,16 +740,16 @@ On the other hand QUIC provides pluggable congestion control mechanism and stati
 
 \clearpage
 
-\subsection{WebRTC over QUIC}
-\label{subsec:webrtc-over-quic}
+\section{WebRTC over QUIC}
+\label{sec:webrtc-over-quic}
 Previous sections show that QUIC encryption mechanism as well as DATAGRAM frames introduce an insignificant overhead
 or do not introduce any overhead at all to the connection bandwidth or transmission delay.
 \textit{video\_quic} application provides promising results in terms of transmitting media over QUIC\@.
 In this section I am describing how QUIC can be adopted to WebRTC which is a state-of-the-art standard
 used in videoconferencing systems.
 
-\subsubsection{WebRTC overview}
-\label{subsubsec:webrtc-overview}
+\subsection{WebRTC overview}
+\label{subsec:webrtc-overview}
 WebRTC is a standard that enables peer to peer (P2P) multimedia connections in web browsers when both peers are behind NATs without using any plugins.
 It is natively implemented by all major browsers.
 In WebRTC there are two planes -- media plane and signaling plane.
@@ -772,8 +787,8 @@ The whole protocol stack is presented in figure~\ref{fig:webrtc-stack}.
     \label{fig:webrtc-stack}
 \end{figure}
 
-\subsubsection{Media plane}
-\label{subsubsec:media-plane}
+\subsection{Media plane}
+\label{subsec:media-plane}
 In media plane, media data is carried using RTP protocol which stands for Real-time Transport Protocol.
 RTP protocol provides media packets with information that is not present in headers of UDP datagrams but is important in terms of multimedia transmission.
 This information includes timestamps -- to know when data should be passed to video or audio decoder, sequence numbers -- to perform packets reordering, payload type -- to know which codec is used.
@@ -791,7 +806,8 @@ They are used for establishing a connection between peers even when both of them
 At the end, in most cases everything is carried in UDP datagrams.
 However, in some specific scenarios (e.g.\ when some network blocks UDP traffic or allows only for traffic on port 443) TCP or TLS over TCP has to be used.
 
-\subsubsection{Signaling plane}
+\subsection{Signaling plane}
+\label{subsec:signaling-plane}
 Main protocol used in signaling plane is Session Description Protocol (SDP).
 It defines format of messages that carry information about number of media tracks, their codecs, relationships between them, etc.
 WebRTC does not define how to exchange these messages between peers.
@@ -820,8 +836,9 @@ Figure~\ref{fig:webrtc-architecture} presents WebRTC architecture.
 
 \FloatBarrier
 
-\subsubsection{Why media plane uses SRTP instead of plain DTLS records}
-As stated in section~\ref{subsubsec:media-plane}, RTP packets does not use DTLS record layer.
+\subsection{Why media plane uses SRTP instead of plain DTLS records}
+\label{subsec:why-media-plane-uses-srtp-instead-of-plain-dtls-records}
+As stated in section~\ref{subsec:media-plane}, RTP packets does not use DTLS record layer.
 There are two reasons why.
 First of all SRTP protects only RTP payload.
 Encapsulating RTP packet in DTLS record would encrypt also RTP header which can result in higher overall encryption time.
@@ -880,8 +897,8 @@ All of this data is redundant in terms of multimedia communication.
 %    \label{fig:dtls-packet}
 %\end{figure}
 
-\subsubsection{RTP encapsulation in QUIC}
-\label{subsubsec:rtp-encapsulation-in-quic}
+\subsection{RTP encapsulation in QUIC}
+\label{subsec:rtp-encapsulation-in-quic}
 RTP packets should be sent unreliably.
 In real-time communication, in most cases there is no time for retransmitting lost packets.
 Such operation could result in higher jitter and re-buffering rate.
